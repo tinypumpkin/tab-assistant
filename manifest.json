@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Assistant",
+  "version": "1.5.0",
+  "description": "导入/分类/搜索标签页；OpenAI-like 自动分类+摘要；自定义分类；右键导入。",
+  "permissions": [
+    "tabs",
+    "storage",
+    "contextMenus",
+    "notifications",
+    "scripting"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "vendor/readability.js",
+        "vendor/turndown.umd.js",
+        "vendor/turndown-plugin-gfm.js",
+        "vendor/highlight.min.js",
+        "capture-markdown.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "host_permissions": [
+    "*://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Tab Assistant",
+    "default_popup": "dashboard.html"
+  },
+  "icons": {
+    "16": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
