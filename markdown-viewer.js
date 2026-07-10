@@ -1,3 +1,5 @@
+import { t } from "./i18n.js";
+
 const CSS_ASSETS = [
   "vendor/prism.min.css",
   "vendor/highlight-github.min.css",
@@ -144,9 +146,9 @@ function ensureViewerMounted() {
         <div class="markd-viewer__title-group">
           <h2 id="markd-viewer-title" class="markd-viewer__title"></h2>
           <div class="markd-viewer__switch-row">
-            <div class="markd-viewer__tabs markd-viewer__source-switch" role="tablist" aria-label="内容类型">
-              <button type="button" class="markd-viewer__tab" data-role="source" data-source="ai" role="tab" aria-selected="false">AI 笔记</button>
-              <button type="button" class="markd-viewer__tab markd-viewer__tab--active" data-role="source" data-source="reference" role="tab" aria-selected="true">原文参照</button>
+            <div class="markd-viewer__tabs markd-viewer__source-switch" role="tablist" aria-label="${t('viewer.aria_content_type')}">
+              <button type="button" class="markd-viewer__tab" data-role="source" data-source="ai" role="tab" aria-selected="false">${t('viewer.tab_ai_note')}</button>
+              <button type="button" class="markd-viewer__tab markd-viewer__tab--active" data-role="source" data-source="reference" role="tab" aria-selected="true">${t('viewer.tab_source')}</button>
             </div>
             <div class="markd-viewer__view-controls">
               <button type="button" class="markd-viewer__copy">
@@ -156,9 +158,9 @@ function ensureViewerMounted() {
                     <path d="M8 4.5A1.5 1.5 0 0 1 9.5 3h4A1.5 1.5 0 0 1 15 4.5v7A1.5 1.5 0 0 1 13.5 13H9.5A1.5 1.5 0 0 1 8 11.5v-7Z" />
                   </svg>
                 </span>
-                <span class="markd-viewer__action-label">复制</span>
+                <span class="markd-viewer__action-label">${t('viewer.copy')}</span>
               </button>
-              <div class="markd-viewer__view-switch" role="tablist" aria-label="内容视图">
+              <div class="markd-viewer__view-switch" role="tablist" aria-label="${t('viewer.aria_content_view')}">
                 <button type="button" class="markd-viewer__view-pill markd-viewer__view-pill--active" data-role="view" data-tab="markdown" role="tab" aria-selected="true">
                   <span class="markd-viewer__action-icon markd-viewer__action-icon--markdown" aria-hidden="true">
                     <svg viewBox="0 0 20 20" focusable="false">
@@ -168,7 +170,7 @@ function ensureViewerMounted() {
                       <path d="M8 13.5h2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
                     </svg>
                   </span>
-                  <span class="markd-viewer__view-label">Markdown</span>
+                  <span class="markd-viewer__view-label">${t('viewer.view_markdown')}</span>
                 </button>
                 <button type="button" class="markd-viewer__view-pill" data-role="view" data-tab="mindmap" role="tab" aria-selected="false">
                   <span class="markd-viewer__action-icon markd-viewer__action-icon--mindmap" aria-hidden="true">
@@ -181,24 +183,24 @@ function ensureViewerMounted() {
                       <path d="M10.8 11.6L13.1 13.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                     </svg>
                   </span>
-                  <span class="markd-viewer__view-label">思维导图</span>
+                  <span class="markd-viewer__view-label">${t('viewer.mindmap')}</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
-        <button type="button" class="markd-viewer__close" aria-label="关闭预览">×</button>
+        <button type="button" class="markd-viewer__close" aria-label="${t('viewer.aria_close')}">×</button>
       </header>
       <div class="markd-viewer__body">
         <section class="markd-viewer__pane markd-viewer__pane--active" data-pane="markdown" role="tabpanel">
-          <section class="markd-viewer__source-pane markd-viewer__source-pane--active" data-source="reference" role="tabpanel" aria-label="原文参照">
+          <section class="markd-viewer__source-pane markd-viewer__source-pane--active" data-source="reference" role="tabpanel" aria-label="${t('viewer.aria_source')}">
             <div class="markd-viewer__scroll markd-viewer__scroll--markdown">
               <article class="markd-viewer__markdown"></article>
             </div>
           </section>
-          <section class="markd-viewer__source-pane" data-source="ai" role="tabpanel" aria-label="AI 笔记">
+          <section class="markd-viewer__source-pane" data-source="ai" role="tabpanel" aria-label="${t('viewer.aria_ai_note')}">
             <div class="markd-viewer__scroll markd-viewer__scroll--markdown markd-viewer__scroll--ai">
-              <div class="markd-viewer__ai markd-viewer__empty">尚未生成 AI 笔记</div>
+              <div class="markd-viewer__ai markd-viewer__empty">${t('viewer.empty_ai')}</div>
             </div>
           </section>
         </section>
@@ -714,7 +716,7 @@ function renderMarkdownContent(markdown, title) {
   state.currentMarkdown = source;
   state.currentTitle = title || "";
   const { plain, hasContent } = renderMarkdownToContainer(state.markdownContent, source, {
-    emptyText: "暂无 Markdown 内容"
+    emptyText: t("viewer.empty_md")
   });
   state.currentPlainMarkdown = plain;
   state.currentMindmapSource = hasContent ? plain : "";
@@ -727,7 +729,7 @@ function renderAIContent(markdown, title = "") {
   const target = state.aiContent;
   if (!target) return;
   const { plain, hasContent } = renderMarkdownToContainer(target, typeof markdown === "string" ? markdown : "", {
-    emptyText: "暂无 AI 笔记"
+    emptyText: t("viewer.empty_note")
   });
   state.aiPlainMarkdown = plain;
   state.aiMindmapSource = hasContent ? plain : "";
@@ -857,9 +859,9 @@ function resetCopyButton() {
   }
   state.copyButton.classList.remove("markd-viewer__copy--success");
   if (state.copyLabel) {
-    state.copyLabel.textContent = "复制";
+    state.copyLabel.textContent = t("viewer.copy");
   } else {
-    state.copyButton.textContent = "复制";
+    state.copyButton.textContent = t("viewer.copy");
   }
 }
 
@@ -871,9 +873,9 @@ async function handleCopyClick() {
     await copyTextToClipboard(text);
     state.copyButton.classList.add("markd-viewer__copy--success");
     if (state.copyLabel) {
-      state.copyLabel.textContent = "已复制";
+      state.copyLabel.textContent = t("viewer.copied");
     } else {
-      state.copyButton.textContent = "已复制";
+      state.copyButton.textContent = t("viewer.copied");
     }
     if (state.copyResetTimer) {
       window.clearTimeout(state.copyResetTimer);
@@ -882,9 +884,9 @@ async function handleCopyClick() {
       if (!state.copyButton) return;
       state.copyButton.classList.remove("markd-viewer__copy--success");
       if (state.copyLabel) {
-        state.copyLabel.textContent = "复制";
+        state.copyLabel.textContent = t("viewer.copy");
       } else {
-        state.copyButton.textContent = "复制";
+        state.copyButton.textContent = t("viewer.copy");
       }
       state.copyResetTimer = null;
     }, 3000);
@@ -984,6 +986,26 @@ export function destroyMindmapFromTitles(targetSvg) {
   svg.innerHTML = "";
 }
 
+// Re-apply localized header chrome. Needed because ensureViewerMounted()
+// caches the DOM (built once) — without this the switch-row labels stay in
+// the locale that was active at first mount.
+export function refreshViewerChrome() {
+  const c = state.container;
+  if (!c) return;
+  const text = (sel, val) => { const el = c.querySelector(sel); if (el && val != null) el.textContent = val; };
+  const aria = (sel, val) => { const el = c.querySelector(sel); if (el) el.setAttribute("aria-label", val); };
+  text('.markd-viewer__tab[data-source="ai"]', t("viewer.tab_ai_note"));
+  text('.markd-viewer__tab[data-source="reference"]', t("viewer.tab_source"));
+  text('.markd-viewer__view-pill[data-tab="markdown"] .markd-viewer__view-label', t("viewer.view_markdown"));
+  text('.markd-viewer__view-pill[data-tab="mindmap"] .markd-viewer__view-label', t("viewer.mindmap"));
+  text(".markd-viewer__action-label", t("viewer.copy"));
+  aria(".markd-viewer__source-switch", t("viewer.aria_content_type"));
+  aria(".markd-viewer__view-switch", t("viewer.aria_content_view"));
+  aria(".markd-viewer__close", t("viewer.aria_close"));
+  aria('.markd-viewer__source-pane[data-source="reference"]', t("viewer.aria_source"));
+  aria('.markd-viewer__source-pane[data-source="ai"]', t("viewer.aria_ai_note"));
+}
+
 export async function openMarkdownViewer(options) {
   const {
     title,
@@ -1000,8 +1022,9 @@ export async function openMarkdownViewer(options) {
   }
   await loadDependencies();
   ensureViewerMounted();
+  refreshViewerChrome();
   ensureRendererReady();
-  const resolvedTitle = title || "Markdown 预览";
+  const resolvedTitle = title || t("viewer.fallback_title");
   state.titleEl.textContent = resolvedTitle;
   renderMarkdownContent(referenceContent, resolvedTitle);
   renderAIContent(aiContent);

@@ -1,6 +1,15 @@
 
 import FirecrawlModule, { Firecrawl as FirecrawlNamed, FirecrawlClient as FirecrawlClientNamed } from "./vendor/firecrawl.js";
 import { classifyAndSummarize, generateAIMarkdownNote } from "./api.js";
+import { translate, normalizeLocale, DEFAULT_LOCALE } from "./shared-i18n.js";
+
+// Background-side locale: cached from storage and kept fresh via onChanged.
+let bgLocale = DEFAULT_LOCALE;
+async function refreshBgLocale(){
+  try{ const { locale }=await chrome.storage.local.get("locale"); bgLocale=normalizeLocale(locale); }catch(_){}
+}
+function t(key, params){ return translate(bgLocale, key, params); }
+refreshBgLocale();
 let spinnerOn=false;
 function setSpinner(on){
   spinnerOn=!!on;
@@ -48,12 +57,12 @@ chrome.runtime.onMessage.addListener((msg,_,sendResponse)=>{
     (async()=>{
       try{
         const url=typeof msg.url==="string"?msg.url:"";
-        if(!url) throw new Error("无效的 URL");
+        if(!url) throw new Error(t("error.invalid_url"));
         console.log("[AI Note] generate_note received", url);
         const { tabsData=[] }=await chrome.storage.local.get("tabsData");
         const list=Array.isArray(tabsData)?tabsData:[];
         const entry=list.find(item=>item?.url===url);
-        if(!entry) throw new Error("未找到标签页记录");
+        if(!entry) throw new Error(t("error.tab_not_found"));
         const note=await generateAIMarkdownNote(entry);
         const latestRaw=await chrome.storage.local.get("tabsData");
         const latestList=Array.isArray(latestRaw?.tabsData)?latestRaw.tabsData:[];
@@ -114,10 +123,10 @@ function guessCategory(title,url){
   return "其他";
 }
 async function captureMarkdownInBackground(url){
-  if(!url) throw new Error("无效的 URL");
+  if(!url) throw new Error(t("error.invalid_url"));
   const tab=await chrome.tabs.create({url,active:false});
   const tabId=tab?.id;
-  if(typeof tabId!=="number") throw new Error("无法创建后台标签页");
+  if(typeof tabId!=="number") throw new Error(t("error.no_bg_tab"));
   try{
     await waitForTabComplete(tabId,45000);
     try{
@@ -130,7 +139,7 @@ async function captureMarkdownInBackground(url){
     });
     const payload=result?.result;
     if(!payload || !payload.ok){
-      throw new Error(payload?.error || "转换失败");
+      throw new Error(payload?.error || t("error.convert_failed"));
     }
     return payload;
   }finally{
@@ -144,9 +153,9 @@ function getFirecrawlCtor(){
   return null;
 }
 function createFirecrawlClient(apiKey,apiBase){
-  if(!apiKey) throw new Error("Firecrawl API Key 未配置");
+  if(!apiKey) throw new Error(t("error.firecrawl_no_key"));
   const FirecrawlCtor=getFirecrawlCtor();
-  if(typeof FirecrawlCtor!=="function") throw new Error("未找到 Firecrawl 客户端");
+  if(typeof FirecrawlCtor!=="function") throw new Error(t("error.firecrawl_no_client"));
   const options={ apiKey };
   if(apiBase) options.apiUrl=apiBase;
   return new FirecrawlCtor(options);
@@ -169,13 +178,13 @@ function resolveMarkdownPayload(payload){
   return "";
 }
 async function fetchMarkdownViaFirecrawl(url){
-  if(!url) throw new Error("无效的 URL");
+  if(!url) throw new Error(t("error.invalid_url"));
   const { firecrawlKey="", firecrawlBase="" }=await chrome.storage.local.get(["firecrawlKey","firecrawlBase"]);
   const client=createFirecrawlClient(firecrawlKey,firecrawlBase);
   const result=await client.scrape(url,{ formats:["markdown"] });
-  if(result?.success===false) throw new Error(result?.error||"Firecrawl 抓取失败");
+  if(result?.success===false) throw new Error(result?.error||t("error.firecrawl_failed"));
   const markdown=resolveMarkdownPayload(result);
-  if(!markdown) throw new Error("未获取到 Markdown 内容");
+  if(!markdown) throw new Error(t("error.no_markdown"));
   const title=(result?.title||result?.metadata?.title||result?.data?.metadata?.title||"").trim();
   return { markdown, title };
 }
@@ -191,7 +200,7 @@ function waitForTabComplete(tabId,timeout=45000){
     };
     const timer=setTimeout(()=>{
       cleanup();
-      reject(new Error("加载超时"));
+      reject(new Error(t("error.load_timeout")));
     },timeout);
     const onUpdated=(updatedId,changeInfo)=>{
       if(updatedId===tabId && changeInfo.status==="complete"){
@@ -202,7 +211,7 @@ function waitForTabComplete(tabId,timeout=45000){
     const onRemoved=(removedId)=>{
       if(removedId===tabId){
         cleanup();
-        reject(new Error("标签已关闭"));
+        reject(new Error(t("error.tab_closed")));
       }
     };
     chrome.tabs.onUpdated.addListener(onUpdated);
@@ -215,14 +224,14 @@ function waitForTabComplete(tabId,timeout=45000){
     }).catch(()=>{});
   });
 }
-function createMenus(){ chrome.contextMenus.removeAll(()=>{
-  chrome.contextMenus.create({id:"root",title:"Tab Assistant",contexts:["page"]});
-  chrome.contextMenus.create({id:"show-cards",parentId:"root",title:"显示卡片",contexts:["page"]});
-  chrome.contextMenus.create({id:"import-current",parentId:"root",title:"导入当前标签页",contexts:["page"]});
-  chrome.contextMenus.create({id:"import-all",parentId:"root",title:"导入所有标签页",contexts:["page"]});
+async function createMenus(){ await refreshBgLocale(); chrome.contextMenus.removeAll(()=>{
+  chrome.contextMenus.create({id:"root",title:t("ctxmenu.root"),contexts:["page"]});
+  chrome.contextMenus.create({id:"show-cards",parentId:"root",title:t("ctxmenu.show_cards"),contexts:["page"]});
+  chrome.contextMenus.create({id:"import-current",parentId:"root",title:t("ctxmenu.import_current"),contexts:["page"]});
+  chrome.contextMenus.create({id:"import-all",parentId:"root",title:t("ctxmenu.import_all"),contexts:["page"]});
 });}
 chrome.runtime.onInstalled.addListener(async()=>{
-  createMenus();
+  await createMenus();
   setSpinner(false);
   try{
     const { captureMode }=await chrome.storage.local.get("captureMode");
@@ -232,7 +241,7 @@ chrome.runtime.onInstalled.addListener(async()=>{
   }catch(_){}
 });
 chrome.runtime.onStartup.addListener(async()=>{
-  createMenus();
+  await createMenus();
   setSpinner(false);
   try{
     const { captureMode }=await chrome.storage.local.get("captureMode");
@@ -241,12 +250,17 @@ chrome.runtime.onStartup.addListener(async()=>{
     }
   }catch(_){}
 });
+// Recreate context menus (localized) when the UI locale changes.
+chrome.storage.onChanged.addListener((changes, area)=>{
+  if(area==="local" && changes.locale){ bgLocale=normalizeLocale(changes.locale.newValue); createMenus(); }
+});
 chrome.contextMenus.onClicked.addListener(async(info,tab)=>{
   if(info.menuItemId==="show-cards") chrome.tabs.create({url:chrome.runtime.getURL("dashboard.html")});
   if(info.menuItemId==="import-current" && tab) await importTabs([tab]);
   if(info.menuItemId==="import-all"){ const tabs=await chrome.tabs.query({currentWindow:true}); await importTabs(tabs); }
 });
 async function importTabs(tabs){
+  await refreshBgLocale();
   const now=Date.now();
   const { tabsData: existing=[], closeImportedTabs=false, apiKey }=await chrome.storage.local.get(["tabsData","closeImportedTabs","apiKey"]);
   const hasAPI=!!apiKey;
@@ -272,16 +286,16 @@ async function importTabs(tabs){
     });
     if(typeof tab.id==="number" && !tab.pinned) toClose.push(tab.id);
   }
-  if(!incoming.length){ notify("标签已导入（无新增）"); return; }
+  if(!incoming.length){ notify(t("notify.imported_no_new")); return; }
   const initialMap=new Map((existing||[]).map(x=>[x.url,x]));
   incoming.forEach(item=>{ initialMap.set(item.url,item); });
   await chrome.storage.local.set({tabsData:Array.from(initialMap.values())});
   if(closeImportedTabs && toClose.length){ try{ await chrome.tabs.remove(toClose); }catch(_){ /* ignore */ } }
   if(!hasAPI){
-    notify(`导入成功 ${incoming.length} 个标签页`);
+    notify(t("notify.imported",{count:incoming.length}));
     return;
   }
-  notify(`已导入 ${incoming.length} 个标签页，正在分类…`);
+  notify(t("notify.imported_classifying",{count:incoming.length}));
   try{
     const out=await withAIWait(()=>classifyAndSummarize(incoming));
     const { tabsData: currentTabs=[] }=await chrome.storage.local.get("tabsData");
@@ -291,9 +305,9 @@ async function importTabs(tabs){
       m.set(item.url,{...prev,...item,starred:prev.starred||false,ts:prev.ts||item.ts||now});
     });
     await chrome.storage.local.set({tabsData:Array.from(m.values())});
-    notify(`导入并分类完成 ${out.length} 个标签页`);
+    notify(t("notify.imported_classified",{count:out.length}));
   }catch(err){
-    notify(`导入成功 ${incoming.length} 个标签页（分类失败）`);
+    notify(t("notify.imported_classify_failed",{count:incoming.length}));
   }
 }
 function notify(message){ try{ chrome.notifications.create({type:"basic",iconUrl:chrome.runtime.getURL("icons/icon128.png"),title:"Tab Assistant",message}); }catch(_){ } }

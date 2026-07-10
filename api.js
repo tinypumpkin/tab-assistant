@@ -1,10 +1,19 @@
 import { buildNotePrompt } from "./prompt-builder.js";
 import { NOTE_STYLES, DEFAULT_NOTE_STYLE } from "./note-templates.js";
+import { translate, normalizeLocale, DEFAULT_LOCALE } from "./shared-i18n.js";
+import { getPromptLanguageVars } from "./prompt-language-vars.js";
+
+// Locale for error messages thrown here (refreshed per call below).
+let apiLocale = DEFAULT_LOCALE;
+function t(key, params) {
+  return translate(apiLocale, key, params);
+}
 
 export async function classifyAndSummarize(pages) {
   if (!pages || !pages.length) return [];
-  const { apiKey, apiBase, apiModel, activeCategories = [] } =
-    await chrome.storage.local.get(["apiKey", "apiBase", "apiModel", "activeCategories"]);
+  const { apiKey, apiBase, apiModel, activeCategories = [], noteLanguage, locale } =
+    await chrome.storage.local.get(["apiKey", "apiBase", "apiModel", "activeCategories", "noteLanguage", "locale"]);
+  apiLocale = normalizeLocale(locale);
   if (!apiKey) {
     return pages.map((p) => ({
       ...p,
@@ -13,13 +22,14 @@ export async function classifyAndSummarize(pages) {
     }));
   }
   const base = (apiBase || "https://api.openai.com/v1").replace(/\/+$/, "");
-  const model = apiModel || "gpt-4o-mini";
+  const model = apiModel || "gpt-5.4-mini";
   const cats = activeCategories.length
     ? activeCategories
     : ["技术", "新闻", "视频", "学术", "社交", "其他"];
+  const lv = getPromptLanguageVars(noteLanguage);
   const sys = `你是一个浏览器标签助手。请将网页归类到以下类别之一：${cats.join(
     " / "
-  )}。输出 JSON 数组，每个元素形如：{"url":"...","category":"类别","summary":"一句中文摘要（20~60字）"}`;
+  )}。输出 JSON 数组，每个元素形如：{"url":"...","category":"类别","summary":${JSON.stringify(lv.summary_instruction)}}`;
   const user = pages
     .map((p) => `标题: ${p.title}\nURL: ${p.url}`)
     .join("\n---\n");
@@ -31,27 +41,18 @@ export async function classifyAndSummarize(pages) {
     ],
     temperature: 0.2
   };
-  let data;
-  try {
-    const res = await fetch(`${base}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`
-      },
-      body: JSON.stringify(body)
-    });
-    if (!res.ok) {
-      throw await buildApiError(res);
-    }
-    data = await res.json();
-  } catch (_error) {
-    return pages.map((p) => ({
-      ...p,
-      category: "未分类",
-      summary: ""
-    }));
+  const res = await fetch(`${base}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    throw await buildApiError(res);
   }
+  const data = await res.json();
   const text = data?.choices?.[0]?.message?.content || "";
   const m = text.match(/\[[\s\S]*\]/);
   let arr = [];
@@ -72,12 +73,14 @@ export async function classifyAndSummarize(pages) {
 }
 
 export async function generateAIMarkdownNote(tab) {
+  const { locale } = await chrome.storage.local.get("locale");
+  apiLocale = normalizeLocale(locale);
   if (!tab || typeof tab.url !== "string") {
-    throw new Error("无效的标签页记录");
+    throw new Error(t("error.invalid_tab"));
   }
   const markd = typeof tab.markd === "string" ? tab.markd.trim() : "";
   if (!markd) {
-    const err = new Error("请先抓取 Markdown 内容");
+    const err = new Error(t("error.need_markdown"));
     err.code = "NO_MARKDOWN";
     throw err;
   }
@@ -86,34 +89,37 @@ export async function generateAIMarkdownNote(tab) {
     apiBase,
     apiModel,
     noteStyle,
-    noteSupplement
+    noteSupplement,
+    noteLanguage
   } = await chrome.storage.local.get([
     "apiKey",
     "apiBase",
     "apiModel",
     "noteStyle",
-    "noteSupplement"
+    "noteSupplement",
+    "noteLanguage"
   ]);
   if (!apiKey) {
-    const err = new Error("请先在设置中配置 LLM API");
+    const err = new Error(t("error.no_api_key"));
     err.code = "NO_API_KEY";
     throw err;
   }
   const base = (apiBase || "https://api.openai.com/v1").replace(/\/+$/, "");
-  const model = (apiModel || "gpt-4o-mini").trim() || "gpt-4o-mini";
+  const model = (apiModel || "gpt-5.4-mini").trim() || "gpt-5.4-mini";
   const styleKey = NOTE_STYLES[noteStyle] ? noteStyle : DEFAULT_NOTE_STYLE;
+  const lv = getPromptLanguageVars(noteLanguage);
   const prompt = buildNotePrompt({
     title: tab.title || tab.url || "",
     category: tab.category || "",
     markd,
     styleKey,
-    supplement: typeof noteSupplement === "string" ? noteSupplement : ""
+    supplement: typeof noteSupplement === "string" ? noteSupplement : "",
+    noteLanguage
   });
   const messages = [
     {
       role: "system",
-      content:
-        "你是一名专业的中文笔记助手，会根据提供的网页 Markdown 内容生成结构化的高质量中文 Markdown 笔记。"
+      content: lv.note_system_role
     },
     { role: "user", content: prompt }
   ];
@@ -136,11 +142,11 @@ export async function generateAIMarkdownNote(tab) {
     if (error?.code === "NO_API_KEY" || error?.code === "NO_MARKDOWN") {
       throw error;
     }
-    throw new Error(error?.message || "AI 笔记生成失败");
+    throw new Error(error?.message || t("error.ai_note_failed"));
   }
   const output = (data?.choices?.[0]?.message?.content || "").trim();
   if (!output) {
-    throw new Error("模型未返回内容");
+    throw new Error(t("error.model_empty"));
   }
   return output;
 }

@@ -3,24 +3,24 @@
 <title>Tab Assistant</title><link rel="stylesheet" href="styles.css"></head><body>
 <div class="container">
   <div class="topbar">
-    <div class="logo"><img src="icons/icon32.png"/><span>Tab Assistant</span></div>
-    <input id="search" class="input" placeholder="搜索标题 / 摘要 / URL…">
+    <div class="logo"><img src="icons/icon32.png"/><span data-i18n="app.name">Tab Assistant</span></div>
+    <input id="search" class="input" data-i18n-placeholder="topbar.search_placeholder" placeholder="搜索标题 / 摘要 / URL…">
     <div id="filterDropdown" class="filter-dropdown">
       <button id="filterToggle" class="filter-toggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="filterMenu">
-        <span id="filterLabel" class="filter-label">全部</span>
+        <span id="filterLabel" class="filter-label" data-i18n="topbar.filter_all">全部</span>
         <span class="filter-caret">▾</span>
       </button>
       <div id="filterMenu" class="filter-menu hidden" role="listbox"></div>
     </div>
-    <button id="manageCats" class="btn">分类 +</button>
+    <button id="manageCats" class="btn" data-i18n="topbar.manage_categories">分类 +</button>
     <div class="dropdown" id="hubDropdown">
-      <button id="hubBtn" class="btn">Hub</button>
+      <button id="hubBtn" class="btn" data-i18n="topbar.hub">Hub</button>
       <div id="hubMenu" class="dropdown-menu hidden">
-        <button id="hubExport" class="menu-item">导出标签页</button>
-        <button id="hubImport" class="menu-item">导入标签页</button>
+        <button id="hubExport" class="menu-item" data-i18n="hub.export">导出标签页</button>
+        <button id="hubImport" class="menu-item" data-i18n="hub.import">导入标签页</button>
       </div>
     </div>
-    <button id="settings" class="btn">设置</button>
+    <button id="settings" class="btn" data-i18n="topbar.settings">设置</button>
   </div>
   <div id="categoryView" class="grid"></div>
   <div id="tabView" class="hidden"></div>
@@ -31,128 +31,136 @@
   <div class="panel settings-panel">
     <div class="settings-layout">
       <aside class="settings-sidebar">
-        <button class="settings-tab active" data-settings-tab="api">API 设置</button>
-        <button class="settings-tab" data-settings-tab="import">导入类型</button>
-        <button class="settings-tab" data-settings-tab="capture">抓取设置</button>
-        <button class="settings-tab" data-settings-tab="note">AI 笔记</button>
-        <button class="settings-tab" data-settings-tab="hub">Hub 导入</button>
-        <button class="settings-tab" data-settings-tab="general">通用配置</button>
+        <button class="settings-tab active" data-settings-tab="api" data-i18n="settings.tab.api">API 设置</button>
+        <button class="settings-tab" data-settings-tab="import" data-i18n="settings.tab.import">导入类型</button>
+        <button class="settings-tab" data-settings-tab="capture" data-i18n="settings.tab.capture">抓取设置</button>
+        <button class="settings-tab" data-settings-tab="note" data-i18n="settings.tab.note">AI 笔记</button>
+        <button class="settings-tab" data-settings-tab="hub" data-i18n="settings.tab.hub">Hub 导入</button>
+        <button class="settings-tab" data-settings-tab="general" data-i18n="settings.tab.general">通用配置</button>
       </aside>
       <div class="settings-content">
         <div id="settingsViewApi" class="settings-view">
           <div class="api-subheader">
-            <h3 class="settings-title"><span class="settings-title-main">API设置</span><span class="settings-title-sep">|</span><span id="apiSubTitle" class="settings-title-sub">LLM API</span></h3>
+            <h3 class="settings-title"><span class="settings-title-main" data-i18n="settings.title.api">API设置</span><span class="settings-title-sep">|</span><span id="apiSubTitle" class="settings-title-sub" data-i18n="settings.subtitle.llm">LLM API</span></h3>
             <div class="api-subtabs" role="tablist">
-              <button type="button" class="api-subtab active" data-api-tab="llm">LLM API</button>
-              <button type="button" class="api-subtab" data-api-tab="firecrawl">Firecrawl API</button>
+              <button type="button" class="api-subtab active" data-api-tab="llm" data-i18n="settings.subtitle.llm">LLM API</button>
+              <button type="button" class="api-subtab" data-api-tab="firecrawl" data-i18n="settings.subtitle.firecrawl">Firecrawl API</button>
             </div>
           </div>
           <div id="apiPanelLlm" class="api-panel">
             <div class="grid2 settings-grid">
-              <label>OpenAI-like API Key</label><input id="m_apiKey" class="input" placeholder="sk-...">
-              <label>API Base URL</label><input id="m_apiBase" class="input" placeholder="https://api.openai.com/v1 或 https://api.deepseek.com">
-              <label>模型 ID</label><input id="m_apiModel" class="input" placeholder="gpt-4o-mini / deepseek-chat">
+              <label data-i18n="settings.label.api_key">OpenAI-like API Key</label><input id="m_apiKey" class="input" data-i18n-placeholder="settings.placeholder.api_key" placeholder="sk-...">
+              <label data-i18n="settings.label.api_base">API Base URL</label><input id="m_apiBase" class="input" data-i18n-placeholder="settings.placeholder.api_base" placeholder="https://api.openai.com/v1 或 https://api.deepseek.com">
+              <label data-i18n="settings.label.model">模型 ID</label><input id="m_apiModel" class="input" data-i18n-placeholder="settings.placeholder.model" placeholder="gpt-4o-mini / deepseek-chat">
             </div>
           </div>
           <div id="apiPanelFirecrawl" class="api-panel hidden">
             <div class="grid2 settings-grid">
-              <label>Firecrawl API Key</label><input id="m_firecrawlKey" class="input" placeholder="fc-...">
-              <label>Firecrawl Base URL</label><input id="m_firecrawlBase" class="input" placeholder="https://api.firecrawl.dev 或 https://your.firecrawl.endpoint">
+              <label data-i18n="settings.label.firecrawl_key">Firecrawl API Key</label><input id="m_firecrawlKey" class="input" data-i18n-placeholder="settings.placeholder.firecrawl_key" placeholder="fc-...">
+              <label data-i18n="settings.label.firecrawl_base">Firecrawl Base URL</label><input id="m_firecrawlBase" class="input" data-i18n-placeholder="settings.placeholder.firecrawl_base" placeholder="https://api.firecrawl.dev 或 https://your.firecrawl.endpoint">
             </div>
-            <p class="muted small">支持官方与私有化部署的 Firecrawl，当前仅提供界面配置。</p>
+            <p class="muted small" data-i18n="settings.help.firecrawl">支持官方与私有化部署的 Firecrawl，当前仅提供界面配置。</p>
           </div>
         </div>
         <div id="settingsViewImport" class="settings-view hidden">
-          <h3 class="settings-title">导入类型</h3>
-          <p class="muted">控制通过右键菜单导入标签页后的行为。</p>
+          <h3 class="settings-title" data-i18n="settings.tab.import">导入类型</h3>
+          <p class="muted" data-i18n="settings.import.desc">控制通过右键菜单导入标签页后的行为。</p>
           <label class="toggle-row">
             <input type="checkbox" id="importCloseToggle" class="toggle-input">
-            <span class="toggle-label">导入成功后自动关闭已导入的标签页</span>
+            <span class="toggle-label" data-i18n="settings.import.close_toggle">导入成功后自动关闭已导入的标签页</span>
           </label>
-          <p class="muted small">提示：仅对“导入当前标签页”和“导入所有标签页”生效。</p>
+          <p class="muted small" data-i18n="settings.import.hint">提示：仅对“导入当前标签页”和“导入所有标签页”生效。</p>
         </div>
         <div id="settingsViewCapture" class="settings-view hidden">
-          <h3 class="settings-title">抓取设置</h3>
-          <p class="muted">选择网页抓取解析 Markdown 的策略。</p>
+          <h3 class="settings-title" data-i18n="settings.tab.capture">抓取设置</h3>
+          <p class="muted" data-i18n="settings.capture.desc">选择网页抓取解析 Markdown 的策略。</p>
           <div class="radio-group">
             <label class="radio-row">
               <input type="radio" name="captureMode" value="local" checked>
               <div>
-                <strong>本地抓取（默认）</strong>
-                <p class="muted">在后台静默打开标签页抓取网页内容，并使用浏览器内的 Readability + Turndown 转换。</p>
+                <strong data-i18n="settings.capture.local_title">本地抓取（默认）</strong>
+                <p class="muted" data-i18n="settings.capture.local_desc">在后台静默打开标签页抓取网页内容，并使用浏览器内的 Readability + Turndown 转换。</p>
               </div>
             </label>
             <label class="radio-row">
               <input type="radio" name="captureMode" value="firecrawl">
               <div>
-                <strong>Firecrawl 抓取</strong>
-                <p class="muted">调用 Firecrawl 托管服务获取 Markdown（需提前配置 Firecrawl API）。</p>
+                <strong data-i18n="settings.capture.firecrawl_title">Firecrawl 抓取</strong>
+                <p class="muted" data-i18n="settings.capture.firecrawl_desc">调用 Firecrawl 托管服务获取 Markdown（需提前配置 Firecrawl API）。</p>
               </div>
             </label>
           </div>
-          <p class="muted small">提示：本地抓取时，请在解析完成前保持标签页处于打开状态。</p>
+          <p class="muted small" data-i18n="settings.capture.hint">提示：本地抓取时，请在解析完成前保持标签页处于打开状态。</p>
         </div>
         <div id="settingsViewNote" class="settings-view hidden">
-          <h3 class="settings-title">AI 笔记设置</h3>
-          <p class="muted">选择默认笔记风格，并为模型提供额外补充信息。</p>
-          <label>默认笔记风格</label>
+          <h3 class="settings-title" data-i18n="settings.note.title">AI 笔记设置</h3>
+          <p class="muted" data-i18n="settings.note.desc">选择默认笔记风格，并为模型提供额外补充信息。</p>
+          <label data-i18n="settings.note.default_style">默认笔记风格</label>
           <div id="noteStyleDropdown" class="filter-dropdown">
             <button id="noteStyleToggle" class="filter-toggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="noteStyleMenu">
-              <span id="noteStyleLabel" class="filter-label">精简</span>
+              <span id="noteStyleLabel" class="filter-label" data-i18n="note_style.minimal">精简</span>
               <span class="filter-caret">⌄</span>
             </button>
             <div id="noteStyleMenu" class="filter-menu hidden" role="listbox" tabindex="-1"></div>
           </div>
-          <label for="noteSupplement">补充</label>
-          <textarea id="noteSupplement" class="input" rows="4" placeholder="笔记需要罗列出 xxx 关键点..."></textarea>
-          <p class="muted small">补充信息会一并传给模型，用于强调关键点或额外格式要求。</p>
+          <select id="noteLangSelect" class="select" style="min-width:140px;width:auto;padding:0 14px;font-size:14px;align-self:flex-start">
+            <option value="zh-CN" data-i18n="lang.zh-CN">简体中文</option>
+            <option value="en-US" data-i18n="lang.en-US">English</option>
+          </select>
+          <label for="noteSupplement" data-i18n="settings.note.supplement">补充</label>
+          <textarea id="noteSupplement" class="input" rows="4" data-i18n-placeholder="settings.note.supplement_placeholder" placeholder="笔记需要罗列出 xxx 关键点..."></textarea>
+          <p class="muted small" data-i18n="settings.note.supplement_help">补充信息会一并传给模型，用于强调关键点或额外格式要求。</p>
         </div>
         <div id="settingsViewHub" class="settings-view hidden">
-          <h3 class="settings-title">Hub 导入</h3>
-          <p class="muted">选择 Hub 中导入 JSON 时的合并策略。</p>
+          <h3 class="settings-title" data-i18n="settings.tab.hub">Hub 导入</h3>
+          <p class="muted" data-i18n="settings.hub.desc">选择 Hub 中导入 JSON 时的合并策略。</p>
           <div class="radio-group">
             <label class="radio-row">
               <input type="radio" name="hubImportMode" value="append">
               <div>
-                <strong>追加导入（默认）</strong>
-                <p class="muted">保留现有标签，仅新增文件中不存在的 URL。</p>
+                <strong data-i18n="settings.hub.append_title">追加导入（默认）</strong>
+                <p class="muted" data-i18n="settings.hub.append_desc">保留现有标签，仅新增文件中不存在的 URL。</p>
               </div>
             </label>
             <label class="radio-row">
               <input type="radio" name="hubImportMode" value="overwrite">
               <div>
-                <strong>覆盖导入</strong>
-                <p class="muted">用文件中的标签页替换当前全部标签，可用于快速恢复备份。</p>
+                <strong data-i18n="settings.hub.overwrite_title">覆盖导入</strong>
+                <p class="muted" data-i18n="settings.hub.overwrite_desc">用文件中的标签页替换当前全部标签，可用于快速恢复备份。</p>
               </div>
             </label>
           </div>
-          <p class="muted small">提示：Hub 导入/导出用于批量 JSON 文件，不影响“导入当前/所有标签页”的网页采集功能。</p>
+          <p class="muted small" data-i18n="settings.hub.hint">提示：Hub 导入/导出用于批量 JSON 文件，不影响“导入当前/所有标签页”的网页采集功能。</p>
         </div>
         <div id="settingsViewGeneral" class="settings-view hidden">
-          <h3 class="settings-title">通用配置</h3>
-          <p class="muted">配置抓取与 AI 生成的批量参数，仅展示 UI，暂未启用逻辑。</p>
+          <h3 class="settings-title" data-i18n="settings.tab.general">通用配置</h3>
+          <p class="muted" data-i18n="settings.general.desc">配置抓取与 AI 生成的批量参数，保存后立即生效（超时、抓取/AI 并发数、重试次数、一键生成）。</p>
+          <select id="uiLangSelect" class="select" style="min-width:140px;width:auto;padding:0 14px;font-size:14px;align-self:flex-start">
+            <option value="zh-CN" data-i18n="lang.zh-CN">简体中文</option>
+            <option value="en-US" data-i18n="lang.en-US">English</option>
+          </select>
           <div class="grid2 settings-grid">
-            <label for="generalTimeout" class="muted">超时时间</label>
-            <input id="generalTimeout" class="input" type="number" min="1" max="200" placeholder="最大 200 秒">
-            <label for="generalCaptureLimit" class="muted">抓取数量</label>
-            <input id="generalCaptureLimit" class="input" type="number" min="1" max="10" placeholder="最大 10 个">
-            <label for="generalAiLimit" class="muted">AI 生成数量</label>
-            <input id="generalAiLimit" class="input" type="number" min="1" max="10" placeholder="最大 10 个">
-            <label for="generalRetryLimit" class="muted">重试次数</label>
-            <input id="generalRetryLimit" class="input" type="number" min="1" max="10" placeholder="默认 3 次，最大 10 次">
+            <label for="generalTimeout" class="muted" data-i18n="settings.general.timeout">超时时间</label>
+            <input id="generalTimeout" class="input" type="number" min="1" max="200" data-i18n-placeholder="settings.general.placeholder_timeout" placeholder="最大 200 秒">
+            <label for="generalCaptureLimit" class="muted" data-i18n="settings.general.capture_limit">抓取数量</label>
+            <input id="generalCaptureLimit" class="input" type="number" min="1" max="10" data-i18n-placeholder="settings.general.placeholder_capture" placeholder="最大 10 个">
+            <label for="generalAiLimit" class="muted" data-i18n="settings.general.ai_limit">AI 生成数量</label>
+            <input id="generalAiLimit" class="input" type="number" min="1" max="10" data-i18n-placeholder="settings.general.placeholder_ai" placeholder="最大 10 个">
+            <label for="generalRetryLimit" class="muted" data-i18n="settings.general.retry">重试次数</label>
+            <input id="generalRetryLimit" class="input" type="number" min="1" max="10" data-i18n-placeholder="settings.general.placeholder_retry" placeholder="默认 3 次，最大 10 次">
           </div>
           <label class="toggle-row">
             <input type="checkbox" id="generalAiAutoToggle" class="toggle-input">
-            <span class="toggle-label">AI 笔记一键生成</span>
+            <span class="toggle-label" data-i18n="settings.general.ai_auto">AI 笔记一键生成</span>
           </label>
-          <p class="muted small">提示：勾选后点击 AI 按钮将自动抓取并生成笔记。</p>
+          <p class="muted small" data-i18n="settings.general.ai_auto_hint">提示：勾选后点击 AI 按钮将自动抓取并生成笔记。</p>
         </div>
         <div class="settings-footer">
           <span id="m_status" class="muted"></span>
           <div class="settings-actions">
-            <button id="m_save" class="btn primary">保存</button>
-            <button id="m_test" class="btn">测试连接</button>
-            <button id="m_close" class="btn">关闭</button>
+            <button id="m_save" class="btn primary" data-i18n="settings.action.save">保存</button>
+            <button id="m_test" class="btn" data-i18n="settings.action.test">测试连接</button>
+            <button id="m_close" class="btn" data-i18n="settings.action.close">关闭</button>
           </div>
         </div>
       </div>
@@ -160,16 +168,16 @@
   </div>
 </div>
 <div id="catsModal" class="modal hidden"><div class="panel">
-  <h3 style="margin:0 0 10px;">管理分类</h3>
+  <h3 style="margin:0 0 10px;" data-i18n="cats.title">管理分类</h3>
   <div class="row" style="margin-bottom:10px; gap:10px;">
-    <input id="newCatInput" class="input" placeholder="新分类，如：教程" style="flex:1;">
-    <button id="addCatBtn" class="btn">添加</button>
+    <input id="newCatInput" class="input" data-i18n-placeholder="cats.new_placeholder" placeholder="新分类，如：教程" style="flex:1;">
+    <button id="addCatBtn" class="btn" data-i18n="cats.add">添加</button>
   </div>
   <div id="catsList" style="margin-bottom:12px;"></div>
   <div class="row" style="justify-content:flex-end">
-    <button id="btnReclassAuto" class="btn">自动分类（未分类/其他）</button>
-    <button id="btnReclassAll" class="btn">全部重分类</button>
-    <button id="closeCats" class="btn">关闭</button>
+    <button id="btnReclassAuto" class="btn" data-i18n="cats.reclass_auto">自动分类（未分类/其他）</button>
+    <button id="btnReclassAll" class="btn" data-i18n="cats.reclass_all">全部重分类</button>
+    <button id="closeCats" class="btn" data-i18n="settings.action.close">关闭</button>
   </div>
   <div id="catEditPopover" class="cat-edit-popover hidden"></div>
 </div></div>

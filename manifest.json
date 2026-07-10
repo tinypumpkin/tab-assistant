@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tab Assistant",
-  "version": "1.5.0",
+  "version": "0.5.6",
   "description": "导入/分类/搜索标签页；OpenAI-like 自动分类+摘要；自定义分类；右键导入。",
   "permissions": [
     "tabs",

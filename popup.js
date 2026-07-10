@@ -1,5 +1,6 @@
-import { openMarkdownViewer, renderMindmapFromTitles, destroyMindmapFromTitles } from "./markdown-viewer.js";
+import { openMarkdownViewer, renderMindmapFromTitles, destroyMindmapFromTitles, refreshViewerChrome } from "./markdown-viewer.js";
 import { NOTE_STYLE_METADATA, DEFAULT_NOTE_STYLE, NOTE_STYLES } from "./note-templates.js";
+import { initI18n, getLocale, setLocale, t as tr, subscribe, applyStaticI18n } from "./i18n.js";
 const CATEGORY_COLORS=["#0f172a","#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899"];
 const GENERAL_CONFIG_DEFAULTS={ timeoutSeconds:120, captureLimit:5, aiLimit:5, retryLimit:3, aiAuto:false };
 const CATEGORY_ICONS=[
@@ -35,8 +36,10 @@ const ICON_OPEN_WINDOW='<svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 const ICON_MINDMAP='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="10" width="5" height="4" rx="1.2"/><path d="M8.5 12H12"/><path d="M12 12l0-5.5a2.5 2.5 0 0 1 2.5-2.5H17"/><path d="M12 12h4.5a2.5 2.5 0 0 1 2.5 2.5V18"/><circle cx="19" cy="5" r="1.8"/><circle cx="19" cy="12" r="1.8"/><circle cx="19" cy="19" r="1.8"/></svg>';
 
 document.addEventListener("DOMContentLoaded", async()=>{
-  const { tabsData=[], lastCategory=null, apiKey, customCategories=[], activeCategories=[], closeImportedTabs=false, hubImportMode, categoryMeta={}, captureMode, noteStyle, noteSupplement, generalConfig } =
-    await chrome.storage.local.get(["tabsData","lastCategory","apiKey","customCategories","activeCategories","closeImportedTabs","hubImportMode","categoryMeta","captureMode","noteStyle","noteSupplement","generalConfig"]);
+  const { tabsData=[], lastCategory=null, apiKey, customCategories=[], activeCategories=[], closeImportedTabs=false, hubImportMode, categoryMeta={}, captureMode, noteStyle, noteSupplement, generalConfig, locale, noteLanguage } =
+    await chrome.storage.local.get(["tabsData","lastCategory","apiKey","customCategories","activeCategories","closeImportedTabs","hubImportMode","categoryMeta","captureMode","noteStyle","noteSupplement","generalConfig","locale","noteLanguage"]);
+  await initI18n(locale);
+  applyStaticI18n();
   state.tabsData=tabsData; state.lastCategory=lastCategory; state.apiConfigured=!!apiKey;
   state.customCategories=[...new Set(customCategories||[])];
   state.activeCategories=activeCategories&&activeCategories.length?activeCategories:[...state.defaultCategories];
@@ -46,18 +49,28 @@ document.addEventListener("DOMContentLoaded", async()=>{
   state.captureMode=captureMode==="firecrawl"?"firecrawl":"local";
   state.noteStyle=NOTE_STYLES[noteStyle]?noteStyle:DEFAULT_NOTE_STYLE;
   state.noteSupplement=typeof noteSupplement==="string"?noteSupplement:"";
+  state.noteLanguage=noteLanguage==="en-US"?"en-US":"zh-CN";
   state.generalConfig=sanitizeGeneralConfig(generalConfig);
   updateTaskQueuesFromConfig();
   bindUI(); buildFilterOptions(); render(); toggleSpinner(false);
   chrome.runtime.sendMessage({type:"get_spinner"}, (res)=> toggleSpinner(Boolean(res&&res.on)));
+  subscribe(()=>{
+    applyStaticI18n();
+    buildFilterOptions();
+    renderNoteStyleMenu();
+    syncNoteStyleUI();
+    render();
+    refreshSettingsI18n();
+    refreshViewerChrome();
+  });
 });
 function normalizeFirecrawlBase(base){
   const trimmed=(base||"").trim();
   if(!trimmed) return "";
   return trimmed.replace(/\/+$/,"");
 }
-const state={tabsData:[],lastCategory:null,query:"",filter:"all",apiConfigured:false,customCategories:[],activeCategories:[],defaultCategories:["技术","新闻","视频","学术","社交","其他"],apiSubTab:"llm",closeImportedTabs:false,settingsTab:"api",hubImportMode:"append",categoryMeta:{},captureMode:"local",noteStyle:DEFAULT_NOTE_STYLE,noteSupplement:"",generalConfig:{...GENERAL_CONFIG_DEFAULTS}};
-let $categoryView,$tabView,$search,$filterDropdown,$filterToggle,$filterMenu,$filterLabel,$settingsBtn,$manageCatsBtn,$sideSpinner,$toast,$modal,$m_apiKey,$m_apiBase,$m_apiModel,$m_save,$m_test,$m_close,$m_status,$catsModal,$catsList,$newCatInput,$btnReAuto,$btnReAll,$btnCatsClose,$hubDropdown,$hubBtn,$hubMenu,$hubExport,$hubImport,$importFile,$settingsTabs,$settingsViewApi,$settingsViewGeneral,$settingsViewImport,$settingsViewCapture,$settingsViewHub,$importCloseToggle,$hubModeInputs,$catEditPopover,$apiSubTabs,$apiPanelLlm,$apiPanelFirecrawl,$apiSubTitle,$m_firecrawlKey,$m_firecrawlBase,$captureModeInputs,$settingsViewNote,$noteStyleDropdown,$noteStyleToggle,$noteStyleMenu,$noteStyleLabel,$noteSupplementInput,$generalTimeoutInput,$generalCaptureLimitInput,$generalAiLimitInput,$generalRetryLimitInput,$generalAiAutoToggle;
+const state={tabsData:[],lastCategory:null,query:"",filter:"all",apiConfigured:false,customCategories:[],activeCategories:[],defaultCategories:["技术","新闻","视频","学术","社交","其他"],apiSubTab:"llm",closeImportedTabs:false,settingsTab:"api",hubImportMode:"append",categoryMeta:{},captureMode:"local",noteStyle:DEFAULT_NOTE_STYLE,noteSupplement:"",noteLanguage:"zh-CN",generalConfig:{...GENERAL_CONFIG_DEFAULTS}};
+let $categoryView,$tabView,$search,$filterDropdown,$filterToggle,$filterMenu,$filterLabel,$settingsBtn,$manageCatsBtn,$sideSpinner,$toast,$modal,$m_apiKey,$m_apiBase,$m_apiModel,$m_save,$m_test,$m_close,$m_status,$catsModal,$catsList,$newCatInput,$btnReAuto,$btnReAll,$btnCatsClose,$hubDropdown,$hubBtn,$hubMenu,$hubExport,$hubImport,$importFile,$settingsTabs,$settingsViewApi,$settingsViewGeneral,$settingsViewImport,$settingsViewCapture,$settingsViewHub,$importCloseToggle,$hubModeInputs,$catEditPopover,$apiSubTabs,$apiPanelLlm,$apiPanelFirecrawl,$apiSubTitle,$m_firecrawlKey,$m_firecrawlBase,$captureModeInputs,$settingsViewNote,$noteStyleDropdown,$noteStyleToggle,$noteStyleMenu,$noteStyleLabel,$noteSupplementInput,$generalTimeoutInput,$generalCaptureLimitInput,$generalAiLimitInput,$generalRetryLimitInput,$generalAiAutoToggle,$uiLangSelect,$noteLangSelect;
 let activePicker=null;
 let activeTrigger=null;
 let activeCard=null;
@@ -85,6 +98,34 @@ function sanitizeCategoryMeta(meta){
 function getCategoryMeta(name){
   if(!name) return {};
   return (state.categoryMeta&&state.categoryMeta[name])||{};
+}
+// Map canonical (stored) built-in category values -> i18n key.
+const DEFAULT_CATEGORY_KEYS={
+  "技术":"category.tech","新闻":"category.news","视频":"category.video",
+  "学术":"category.academic","社交":"category.social","其他":"category.other",
+  "未分类":"category.uncategorized"
+};
+// Display name for a category. Built-in defaults translate with the UI locale;
+// user-added (custom) categories are shown verbatim. Stored values are NOT
+// changed (they remain the canonical key for grouping/filtering/migration).
+function getCategoryDisplayName(cat){
+  if(!cat) return tr("category.uncategorized");
+  const key=DEFAULT_CATEGORY_KEYS[cat];
+  return key ? tr(key) : cat;
+}
+// Reverse map: English default-category label (lowercased) -> Chinese canonical
+// value. Used to normalize imported JSON so English labels don't get stored
+// verbatim (which would stick as untranslated in both locales). Custom labels
+// pass through unchanged.
+const EN_CATEGORY_TO_CANONICAL={
+  "tech":"技术","news":"新闻","video":"视频","academic":"学术",
+  "social":"社交","other":"其他","uncategorized":"未分类"
+};
+function normalizeCategoryValue(raw){
+  if(!raw) return raw;
+  if(DEFAULT_CATEGORY_KEYS[raw]) return raw;            // already canonical (zh)
+  const canon=EN_CATEGORY_TO_CANONICAL[String(raw).toLowerCase()];
+  return canon || raw;                                   // custom -> as-is
 }
 function hexToRgb(hex){
   const value=(hex||"").replace("#","").trim();
@@ -158,7 +199,7 @@ function syncGeneralConfigInputs(){
 }
 function markGeneralSettingsDirty(){
   if(state.settingsTab==="general" && $m_status){
-    $m_status.textContent="点击保存以应用";
+    $m_status.textContent=tr("common.save_to_apply");
   }
 }
 function getGeneralConfigFromInputs(){
@@ -250,14 +291,14 @@ function renderCatEditPopover(category){
   }).join("");
   $catEditPopover.innerHTML=`
     <div class="cat-edit-header">
-      <h4 class="cat-edit-title">${category}</h4>
+      <h4 class="cat-edit-title">${getCategoryDisplayName(category)}</h4>
     </div>
     <div class="cat-edit-swatch-grid">${colorItems}</div>
     <div class="cat-edit-divider"></div>
     <div class="cat-edit-icons">${iconItems}</div>
     <div class="cat-edit-actions">
-      <button type="button" class="cat-edit-reset">恢复默认</button>
-      <span class="muted small">点击颜色或图标更新样式</span>
+      <button type="button" class="cat-edit-reset">${tr("common.reset_default")}</button>
+      <span class="muted small">${tr("cats.edit_hint")}</span>
     </div>
   `;
   $catEditPopover.querySelectorAll(".cat-edit-swatch").forEach(btn=>{
@@ -345,12 +386,12 @@ async function openCategoryMindmapPopover(card, button, popover, svg, category){
   const meta=popover.querySelector(".cat-mindmap-popover-meta");
   const items=getCategoryTabsSnapshot(current);
   if(meta){
-    meta.textContent=items.length?`共 ${items.length} 个标签页`:"暂无标签页";
+    meta.textContent=items.length?tr("empty.no_tabs_count",{count:items.length}):tr("empty.no_tabs");
   }
   const titles=items.map(item=>{
     const text=(item?.title||"").trim();
     if(text) return text;
-    return (item?.url||"").trim()||"未命名标签页";
+    return (item?.url||"").trim()||tr("common.untitled");
   });
   try{
     await renderMindmapFromTitles(svg,{ title:current, nodes:titles });
@@ -404,17 +445,20 @@ function bindUI(){
   $generalAiLimitInput=document.getElementById("generalAiLimit");
   $generalRetryLimitInput=document.getElementById("generalRetryLimit");
   $generalAiAutoToggle=document.getElementById("generalAiAutoToggle");
+  $uiLangSelect=document.getElementById("uiLangSelect");
+  $noteLangSelect=document.getElementById("noteLangSelect");
+  syncLangSelects();
   if($settingsTabs.length){ $settingsTabs.forEach(btn=>{ btn.addEventListener("click",()=> switchSettingsTab(btn.getAttribute("data-settings-tab")||"api")); }); }
   if($apiSubTabs.length){ $apiSubTabs.forEach(btn=>{ btn.addEventListener("click",()=>{ const tab=btn.getAttribute("data-api-tab")||"llm"; switchApiSubTab(tab); }); }); }
-  if($importCloseToggle){ syncImportToggle(); $importCloseToggle.addEventListener("change",()=>{ if(state.settingsTab==="import" && $m_status) $m_status.textContent="点击保存以应用"; }); }
-  if($hubModeInputs.length){ syncHubModeRadios(); $hubModeInputs.forEach(input=>{ input.addEventListener("change",()=>{ if(state.settingsTab==="hub" && $m_status) $m_status.textContent="点击保存以应用"; }); }); }
+  if($importCloseToggle){ syncImportToggle(); $importCloseToggle.addEventListener("change",()=>{ if(state.settingsTab==="import" && $m_status) $m_status.textContent=tr("common.save_to_apply"); }); }
+  if($hubModeInputs.length){ syncHubModeRadios(); $hubModeInputs.forEach(input=>{ input.addEventListener("change",()=>{ if(state.settingsTab==="hub" && $m_status) $m_status.textContent=tr("common.save_to_apply"); }); }); }
   if($captureModeInputs.length){
     syncCaptureRadios();
     $captureModeInputs.forEach(input=>{
       input.addEventListener("change",()=>{
         state.captureMode=input.value==="firecrawl"?"firecrawl":"local";
         syncCaptureRadios();
-        if(state.settingsTab==="capture" && $m_status) $m_status.textContent="点击保存以应用";
+        if(state.settingsTab==="capture" && $m_status) $m_status.textContent=tr("common.save_to_apply");
       });
     });
   }
@@ -431,7 +475,7 @@ function bindUI(){
     $noteSupplementInput.value=state.noteSupplement||"";
     $noteSupplementInput.addEventListener("input",()=>{
       state.noteSupplement=$noteSupplementInput.value;
-      if(state.settingsTab==="note" && $m_status) $m_status.textContent="点击保存以应用";
+      if(state.settingsTab==="note" && $m_status) $m_status.textContent=tr("common.save_to_apply");
     });
   }
   [$generalTimeoutInput,$generalCaptureLimitInput,$generalAiLimitInput,$generalRetryLimitInput].forEach(input=>{
@@ -441,6 +485,18 @@ function bindUI(){
   });
   if($generalAiAutoToggle){
     $generalAiAutoToggle.addEventListener("change",markGeneralSettingsDirty);
+  }
+  if($uiLangSelect){
+    $uiLangSelect.addEventListener("change", async ()=>{
+      await setLocale($uiLangSelect.value);
+    });
+  }
+  if($noteLangSelect){
+    $noteLangSelect.addEventListener("change", ()=>{
+      state.noteLanguage=$noteLangSelect.value==="en-US"?"en-US":"zh-CN";
+      chrome.storage.local.set({noteLanguage:state.noteLanguage});
+      if(state.settingsTab==="note" && $m_status) $m_status.textContent=tr("common.save_to_apply");
+    });
   }
   document.addEventListener("click", onDocumentClickCloseHub);
   document.addEventListener("keydown", e=>{
@@ -568,7 +624,7 @@ function bindUI(){
   switchSettingsTab(state.settingsTab||"api");
 }
 function toast(msg,ms=1800){ $toast.textContent=msg; $toast.classList.add("show"); $toast.classList.remove("hidden"); setTimeout(()=> $toast.classList.remove("show"), ms); setTimeout(()=> $toast.classList.add("hidden"), ms+220); }
-function askApiFirst(){ toast("请先在右上角【设置】中配置 API Key 才能使用分类功能"); $m_status.textContent="请填写可用的 API Key / Base / 模型 ID 后再进行分类。"; }
+function askApiFirst(){ toast(tr("toast.need_api_classify")); $m_status.textContent=tr("toast.need_api_status"); }
 function toggleSpinner(on){ if(on) $sideSpinner.classList.remove("hidden"); else $sideSpinner.classList.add("hidden"); }
 function resolveMarkdownPayload(payload){
   if(!payload) return "";
@@ -586,7 +642,7 @@ function resolveMarkdownPayload(payload){
   }
   return "";
 }
-function showNoteOverlay(card,text="AI 笔记生成中…"){
+function showNoteOverlay(card,text=tr("common.ai_note_generating")){
   if(!card) return;
   card.classList.add("note-generating");
   let overlay=card.querySelector(".tab-note-overlay");
@@ -611,7 +667,7 @@ async function fetchMarkdownForTab(url,button,{silent=false}={}){
   if(!url || markdownBusy.has(url)) return false;
   const index=state.tabsData.findIndex(tab=>tab.url===url);
   if(index<0){
-    toast("未找到标签记录");
+    toast(tr("toast.tab_not_found"));
     return false;
   }
   markdownBusy.add(url);
@@ -631,22 +687,22 @@ async function fetchMarkdownForTab(url,button,{silent=false}={}){
     // const markdown=resolveMarkdownPayload(result);
     const response=await chrome.runtime.sendMessage({type:"fetch_markdown",url});
     if(!response?.ok){
-      throw new Error(response?.error||"Markdown 抓取失败");
+      throw new Error(response?.error||tr("error.capture_failed"));
     }
     const markdown=(response.markdown||"").trim();
     if(!markdown){
-      throw new Error("未获取到 Markdown 内容");
+      throw new Error(tr("error.no_markdown"));
     }
     const current=state.tabsData[index]||{};
     state.tabsData[index]={...current, markd:markdown, note_markd:""};
     await saveTabs();
     shouldRender=true;
-    if(!silent) toast("已保存 Markdown 内容");
+    if(!silent) toast(tr("toast.markdown_saved"));
     success=true;
   }catch(err){
     console.error("fetchMarkdownForTab error",err);
     const message=err && typeof err.message==="string"?err.message:String(err);
-    toast(`抓取失败：${message}`);
+    toast(tr("toast.capture_failed",{detail:message}));
   }finally{
     markdownBusy.delete(url);
     if(button){
@@ -667,13 +723,13 @@ async function generateNoteForTab(url,button,card,{silent=false}={}){
   if(!url || noteBusy.has(url)) return false;
   const index=state.tabsData.findIndex(tab=>tab.url===url);
   if(index<0){
-    toast("未找到标签记录");
+    toast(tr("toast.tab_not_found"));
     return false;
   }
   const entry=state.tabsData[index];
   const hasMarkdown=typeof entry.markd==="string" && entry.markd.trim().length>0;
   if(!hasMarkdown){
-    toast("请先抓取 Markdown 内容");
+    toast(tr("error.need_markdown"));
     return false;
   }
   noteBusy.add(url);
@@ -683,7 +739,7 @@ async function generateNoteForTab(url,button,card,{silent=false}={}){
     button.setAttribute("disabled","disabled");
   }
   if(card){
-    showNoteOverlay(card,"AI 笔记生成中…");
+    showNoteOverlay(card,tr("common.ai_note_generating"));
   }
   let success=false;
   try{
@@ -692,42 +748,42 @@ async function generateNoteForTab(url,button,card,{silent=false}={}){
       response=await chrome.runtime.sendMessage({type:"generate_note",url});
     }catch(sendErr){
       console.error("[AI Note] generate_note message error", sendErr);
-      toast(`AI 笔记生成失败：${sendErr?.message||sendErr||"消息发送失败"}`);
+      toast(tr("toast.ai_failed_detail",{detail:sendErr?.message||sendErr||tr("common.unknown_error")}));
       return;
     }
     if(!response){
       console.error("[AI Note] generate_note no response");
-      toast("AI 笔记生成失败：后台未响应");
+      toast(tr("toast.ai_no_response"));
       return;
     }
     if(!response?.ok){
       if(response?.code==="NO_API_KEY"){
-        toast("请先在设置中配置 LLM API");
+        toast(tr("error.no_api_key"));
         try{ askApiFirst(); }catch(_){}
       }else if(response?.code==="NO_MARKDOWN"){
-        toast("请先抓取 Markdown 内容");
+        toast(tr("error.need_markdown"));
       }else{
         const detail=typeof response?.error==="string" && response.error.trim()
           ? response.error.trim()
-          : (response?.code ? `错误代码：${response.code}` : "未知错误");
+          : (response?.code ? tr("common.error_code",{code:response.code}) : tr("common.unknown_error"));
         console.error("[AI Note] generate_note failed", response);
-        toast(`AI 笔记生成失败：${detail}`);
+        toast(tr("toast.ai_failed_detail",{detail}));
       }
       return;
     }
     const markdown=(response.markdown||"").trim();
     if(!markdown){
-      toast("AI 笔记生成失败：模型返回为空");
+      toast(tr("toast.ai_empty"));
       return;
     }
     state.tabsData[index]={...entry,note_markd:markdown};
     shouldRender=true;
-    if(!silent) toast("AI 笔记已生成");
+    if(!silent) toast(tr("toast.ai_done"));
     success=true;
   }catch(error){
     const message=error?.message||String(error);
     console.error("[AI Note] generateNoteForTab error", error);
-    toast(`AI 笔记生成失败：${message}`);
+    toast(tr("toast.ai_failed_detail",{detail:message}));
   }finally{
     noteBusy.delete(url);
     if(button){
@@ -756,7 +812,7 @@ function tabHasAiNote(entry){
 function enqueueCaptureTask(url,{button=null,silent=false}={}){
   if(!url) return Promise.resolve(false);
   if(!reserveCaptureSlot(url)) return Promise.resolve(false);
-  if(!ensureQueueCapacity(captureQueue,"抓取")){
+  if(!ensureQueueCapacity(captureQueue,tr("label.capture"))){
     releaseCaptureSlot(url);
     return Promise.resolve(false);
   }
@@ -767,13 +823,13 @@ function enqueueCaptureTask(url,{button=null,silent=false}={}){
       return true;
     },
     onFailure:(error)=> handleQueueFailure(error,"capture"),
-    onRetry:(attempt)=> handleQueueRetry("抓取",attempt)
+    onRetry:(attempt)=> handleQueueRetry(tr("label.capture"),attempt)
   }).finally(()=> releaseCaptureSlot(url));
 }
 function enqueueAiTask(url,{button=null,card=null,silent=false}={}){
   if(!url) return Promise.resolve(false);
   if(!reserveAiSlot(url)) return Promise.resolve(false);
-  if(!ensureQueueCapacity(aiQueue,"AI 生成")){
+  if(!ensureQueueCapacity(aiQueue,tr("label.ai"))){
     releaseAiSlot(url);
     return Promise.resolve(false);
   }
@@ -784,7 +840,7 @@ function enqueueAiTask(url,{button=null,card=null,silent=false}={}){
       return true;
     },
     onFailure:(error)=> handleQueueFailure(error,"ai"),
-    onRetry:(attempt)=> handleQueueRetry("AI 生成",attempt)
+    onRetry:(attempt)=> handleQueueRetry(tr("label.ai"),attempt)
   }).finally(()=> releaseAiSlot(url));
 }
 async function enqueueAutoAiFlow(entry,{button=null,card=null,forceCapture=false}={}){
@@ -792,7 +848,7 @@ async function enqueueAutoAiFlow(entry,{button=null,card=null,forceCapture=false
   const current=getTabEntryByUrl(entry.url)||entry;
   let needsCapture=forceCapture || !tabHasMarkdown(current);
   if(card && needsCapture){
-    showNoteOverlay(card,"抓取 Markdown 中…");
+    showNoteOverlay(card,tr("label.capture_md"));
   }
   if(needsCapture){
     try{
@@ -807,7 +863,7 @@ async function enqueueAutoAiFlow(entry,{button=null,card=null,forceCapture=false
     }
   }
   if(card){
-    showNoteOverlay(card,"AI 笔记生成中…");
+    showNoteOverlay(card,tr("common.ai_note_generating"));
   }
   try{
     const generated=await enqueueAiTask(entry.url,{button,card,silent:false});
@@ -821,18 +877,18 @@ async function enqueueAutoAiFlow(entry,{button=null,card=null,forceCapture=false
 function handleQueueFailure(error,type){
   if(error && error.message==="TASK_TIMEOUT"){
     const seconds=state.generalConfig?.timeoutSeconds||GENERAL_CONFIG_DEFAULTS.timeoutSeconds;
-    const label=type==="capture"?"抓取":"AI 生成";
-    toast(`${label}任务超时（${seconds} 秒）`);
+    const label=type==="capture"?tr("label.capture"):tr("label.ai");
+    toast(tr("toast.task_timeout",{label,seconds}));
   }
 }
 function handleQueueRetry(label,attempt){
   if(attempt<=1) return;
-  toast(`${label}任务第 ${attempt} 次重试`);
+  toast(tr("toast.task_retry",{label,attempt}));
 }
 function reserveCaptureSlot(url){
   const limit=getCaptureLimit();
   if(captureSlots.size>=limit && !captureSlots.has(url)){
-    toast(`当前最大抓取：${limit} 个，请到设置中调整`);
+    toast(tr("toast.capture_limit",{limit}));
     return false;
   }
   captureSlots.add(url);
@@ -844,7 +900,7 @@ function releaseCaptureSlot(url){
 function reserveAiSlot(url){
   const limit=getAiLimit();
   if(aiSlots.size>=limit && !aiSlots.has(url)){
-    toast(`当前最大 AI 生成：${limit} 个，请到设置中调整`);
+    toast(tr("toast.ai_limit",{limit}));
     return false;
   }
   aiSlots.add(url);
@@ -852,6 +908,16 @@ function reserveAiSlot(url){
 }
 function releaseAiSlot(url){
   aiSlots.delete(url);
+}
+function syncLangSelects(){
+  if($uiLangSelect) $uiLangSelect.value=getLocale();
+  if($noteLangSelect) $noteLangSelect.value=state.noteLanguage==="en-US"?"en-US":"zh-CN";
+}
+function refreshSettingsI18n(){
+  syncLangSelects();
+  if($apiSubTitle){
+    $apiSubTitle.textContent = state.apiSubTab==="firecrawl" ? tr("settings.subtitle.firecrawl") : tr("settings.subtitle.llm");
+  }
 }
 function syncImportToggle(){ if($importCloseToggle) $importCloseToggle.checked=!!state.closeImportedTabs; }
 function syncHubModeRadios(){ if(!$hubModeInputs||!$hubModeInputs.length){ return; } const mode=state.hubImportMode==="overwrite"?"overwrite":"append"; $hubModeInputs.forEach(input=>{ input.checked=input.value===mode; }); }
@@ -914,7 +980,7 @@ function getSelectedCaptureMode(){
     }
     if($apiPanelLlm) $apiPanelLlm.classList.toggle("hidden", target!=="llm");
     if($apiPanelFirecrawl) $apiPanelFirecrawl.classList.toggle("hidden", target!=="firecrawl");
-    if($apiSubTitle) $apiSubTitle.textContent=target==="llm"?"LLM API":"Firecrawl API";
+    if($apiSubTitle) $apiSubTitle.textContent=target==="llm"?tr("settings.subtitle.llm"):tr("settings.subtitle.firecrawl");
   }
 function openHubMenu(){ if(filterMenuOpen) closeFilterMenu(); if($hubMenu) $hubMenu.classList.remove("hidden"); if($hubDropdown) $hubDropdown.classList.add("open"); }
 function closeHubMenu(){ if($hubMenu) $hubMenu.classList.add("hidden"); if($hubDropdown) $hubDropdown.classList.remove("open"); }
@@ -960,38 +1026,37 @@ function onDocumentClickCloseHub(e){
 }
 function extractHost(url,fallback=""){ try{ return new URL(url).host||fallback; }catch(_){ return fallback; } }
 function safeFileNamePart(name){ const cleaned=(name||"all").replace(/[\\/:*?"<>|]/g,"_").trim(); return cleaned||"all"; }
-async function onExportTabs(){ const targetCategory=state.lastCategory; const data=Array.isArray(state.tabsData)?state.tabsData:[]; const exportList=targetCategory?data.filter(t=>(t.category||"未分类")===targetCategory):[...data]; if(!exportList.length){ toast(targetCategory?"当前分类暂无可导出的标签页":"暂无可导出的标签页"); return; } const payload=exportList.map(item=>({ title:item.title||item.url||"", url:item.url, summary:item.summary||"", category:item.category||"δ����", starred:Boolean(item.starred), ts:item.ts||Date.now(), host:item.host||extractHost(item.url), hintCategory:item.hintCategory||item.category||"δ����", markd:typeof item.markd==="string"?item.markd:"", note_markd:typeof item.note_markd==="string"?item.note_markd:"" })); const stamp=new Date().toISOString().replace(/[-:]/g,"").split(".")[0]; const fileStub=safeFileNamePart(targetCategory||"all"); const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}); const url=URL.createObjectURL(blob); const link=document.createElement("a"); link.href=url; link.download=`tab-assistant-${fileStub}-${stamp}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url); toast(`已导出 ${payload.length} 个标签页`); }
+async function onExportTabs(){ const targetCategory=state.lastCategory; const data=Array.isArray(state.tabsData)?state.tabsData:[]; const exportList=targetCategory?data.filter(t=>(t.category||"未分类")===targetCategory):[...data]; if(!exportList.length){ toast(targetCategory?"当前分类暂无可导出的标签页":"暂无可导出的标签页"); return; } const payload=exportList.map(item=>({ title:item.title||item.url||"", url:item.url, summary:item.summary||"", category:item.category||"未分类", starred:Boolean(item.starred), ts:item.ts||Date.now(), host:item.host||extractHost(item.url), hintCategory:item.hintCategory||item.category||"未分类", markd:typeof item.markd==="string"?item.markd:"", note_markd:typeof item.note_markd==="string"?item.note_markd:"" })); const stamp=new Date().toISOString().replace(/[-:]/g,"").split(".")[0]; const fileStub=safeFileNamePart(targetCategory||"all"); const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}); const url=URL.createObjectURL(blob); const link=document.createElement("a"); link.href=url; link.download=`tab-assistant-${fileStub}-${stamp}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url); toast(`已导出 ${payload.length} 个标签页`); }
 async function onImportFile(event){
   const file=event?.target?.files?.[0];
   if(!file) return;
   try{
     const text=await file.text();
     let data;
-    try{ data=JSON.parse(text); }catch(_){ throw new Error("JSON 解析失败"); }
-    if(!Array.isArray(data)) throw new Error("JSON 须为数组");
+    try{ data=JSON.parse(text); }catch(_){ throw new Error(tr("error.json_parse")); }
+    if(!Array.isArray(data)) throw new Error(tr("error.json_not_array"));
     const mode=state.hubImportMode==="overwrite"?"overwrite":"append";
     const result=await mergeImportedTabs(data,mode);
     if(!result.changed){
-      toast(mode==="overwrite"?"导入文件为空，未执行覆盖":"未找到可导入的标签页");
+      toast(mode==="overwrite"?tr("toast.import_empty_overwrite"):tr("toast.import_empty"));
       return;
     }
-    const modeLabel=mode==="overwrite"?"覆盖":"追加";
-    const categoryLabel=result.category?`（${result.category}）`:"";
+    const categoryLabel=result.category?`（${getCategoryDisplayName(result.category)}）`:"";
     let message;
     if(mode==="overwrite"){
-      message=result.created?`已${modeLabel} ${result.created} 个标签页`:"已覆盖，当前标签页列表已清空";
+      message=result.created?tr("toast.import_overwrote",{count:result.created}):tr("toast.overwrite_cleared");
     }else{
       const parts=[];
-      if(result.created) parts.push(`新增 ${result.created} 个`);
-      if(result.updated) parts.push(`更新 ${result.updated} 个`);
-      if(result.skipped) parts.push(`跳过 ${result.skipped} 个重复`);
-      if(!parts.length) parts.push("无可导入的数据");
-      message=`已${modeLabel} ${parts.join("，")}`;
+      if(result.created) parts.push(tr("toast.import_part_created",{count:result.created}));
+      if(result.updated) parts.push(tr("toast.import_part_updated",{count:result.updated}));
+      if(result.skipped) parts.push(tr("toast.import_part_skipped",{count:result.skipped}));
+      if(!parts.length) parts.push(tr("empty.no_import_data"));
+      message=tr("toast.import_appended",{detail:parts.join(", ")});
     }
     toast(`${message}${categoryLabel}`);
     render();
   }catch(err){
-    toast(`导入失败：${err?.message||err}`);
+    toast(tr("toast.import_failed",{detail:err?.message||err}));
   }finally{
     if(event?.target) event.target.value="";
   }
@@ -1023,7 +1088,8 @@ async function mergeImportedTabs(items,mode){
     const starredRaw=typeof raw.starred==="boolean"?raw.starred:null;
     const tsRaw=Number(raw.ts);
     const host=typeof raw.host==="string"&&raw.host.trim()?raw.host.trim():(prev?.host||extractHost(url));
-    const importedCategory=typeof raw.category==="string"&&raw.category.trim()?raw.category.trim():null;
+    const rawCategory=typeof raw.category==="string"&&raw.category.trim()?raw.category.trim():null;
+    const importedCategory=rawCategory?normalizeCategoryValue(rawCategory):null;
     const fallbackCategory=prev?.category||(importMode==="append"?targetCategory:(targetCategory||"未分类"));
     const importedHint=typeof raw.hintCategory==="string"&&raw.hintCategory.trim()?raw.hintCategory.trim():null;
     const markdRaw=typeof raw.markd==="string"?raw.markd:"";
@@ -1174,8 +1240,8 @@ async function mergeImportedTabs(items,mode){
   }
 
   const categoryLabel=finalCategorySet.size===0
-    ? (importMode==="overwrite"?"无":"")
-    : finalCategorySet.size===1?Array.from(finalCategorySet)[0]:"多分类";
+    ? (importMode==="overwrite"?tr("common.none"):"")
+    : finalCategorySet.size===1?getCategoryDisplayName(Array.from(finalCategorySet)[0]):tr("common.multi_category");
 
   return {
     created,
@@ -1190,9 +1256,9 @@ async function mergeImportedTabs(items,mode){
 function getFilterOptions(){
   const cats=[...new Set(state.activeCategories||[])];
   return [
-    { value:"all", label:"全部" },
-    { value:"starred", label:"仅收藏" },
-    ...cats.map(c=>({ value:c, label:c }))
+    { value:"all", label:tr("filter.all") },
+    { value:"starred", label:tr("filter.starred") },
+    ...cats.map(c=>({ value:c, label:getCategoryDisplayName(c) }))
   ];
 }
 function updateFilterLabel(options){
@@ -1222,16 +1288,16 @@ async function openCategoryTabs(category){
   const source=Array.isArray(state.tabsData)?state.tabsData:[];
   const list=source.filter(tab=>(tab.category||"未分类")===target).filter(tab=>typeof tab?.url==="string"&&tab.url.trim());
   if(!list.length){
-    toast("当前分类暂无可打开的标签页");
+    toast(tr("toast.no_tabs_to_open"));
     return;
   }
   const urls=list.map(tab=>tab.url);
   try{
     await chrome.windows.create({url:urls});
-    toast(`已在新窗口打开 ${urls.length} 个标签页`);
+    toast(tr("toast.opened_tabs",{count:urls.length}));
   }catch(err){
     console.error("openCategoryTabs error",err);
-    toast("打开标签页失败");
+    toast(tr("toast.open_failed"));
   }
 }
 function openFilterMenu(){
@@ -1263,7 +1329,7 @@ function toggleFilterMenu(){
 }
 function getNoteStyleLabel(key){
   const meta=NOTE_STYLE_METADATA.find(item=>item.key===key);
-  return meta?.label || NOTE_STYLE_METADATA[0]?.label || "精简";
+  return meta ? tr('note_style.'+meta.key) : tr('note_style.'+DEFAULT_NOTE_STYLE);
 }
 function syncNoteStyleUI(){
   const key=NOTE_STYLES[state.noteStyle]?state.noteStyle:DEFAULT_NOTE_STYLE;
@@ -1280,11 +1346,11 @@ function syncNoteSupplementInput(){
 function renderNoteStyleMenu(){
   if(!$noteStyleMenu) return;
   const current=NOTE_STYLES[state.noteStyle]?state.noteStyle:DEFAULT_NOTE_STYLE;
-  const items=NOTE_STYLE_METADATA.map(({key,label})=>{
+  const items=NOTE_STYLE_METADATA.map(({key})=>{
     const selected=key===current;
     const activeClass=selected?" active":"";
     const check=selected?'<span class="filter-option-check">&#10003;</span>':"";
-    return `<button type="button" class="filter-option${activeClass}" data-value="${key}" role="option" aria-selected="${selected}"><span class="filter-option-label">${label}</span>${check}</button>`;
+    return `<button type="button" class="filter-option${activeClass}" data-value="${key}" role="option" aria-selected="${selected}"><span class="filter-option-label">${getNoteStyleLabel(key)}</span>${check}</button>`;
   }).join("");
   if(items){
     $noteStyleMenu.innerHTML=items;
@@ -1295,7 +1361,7 @@ function renderNoteStyleMenu(){
       });
     });
   }else{
-    $noteStyleMenu.innerHTML='<div class="muted small" role="note">暂无可用风格</div>';
+    $noteStyleMenu.innerHTML='<div class="muted small" role="note">'+tr("empty.no_styles")+'</div>';
   }
 }
 function selectNoteStyle(key){
@@ -1307,7 +1373,7 @@ function selectNoteStyle(key){
     console.log("[NoteStyle]", next);
   }catch(_){}
   if(changed){
-    if(state.settingsTab==="note" && $m_status) $m_status.textContent="点击保存以应用";
+    if(state.settingsTab==="note" && $m_status) $m_status.textContent=tr("common.save_to_apply");
   }
   closeNoteStyleMenu();
 }
@@ -1386,7 +1452,7 @@ function buildPickerOptions(tab){
     const svg=meta.icon?getIconSvg(meta.icon):"";
     const icon=svg?`<span class="picker-icon">${svg}</span>`:"";
     const check=isActive?'<span class="picker-check">✓</span>':'';
-    return `<button type="button" class="picker-item${isActive?' active':''}" data-cat="${cat}"><span class="picker-dot"${dotStyle}></span><div class="picker-info">${icon}<span class="picker-text">${cat}</span></div>${check}</button>`;
+    return `<button type="button" class="picker-item${isActive?' active':''}" data-cat="${cat}"><span class="picker-dot"${dotStyle}></span><div class="picker-info">${icon}<span class="picker-text">${getCategoryDisplayName(cat)}</span></div>${check}</button>`;
   }).join('');
 }
 function openCategoryPicker(card,picker,input,trigger){
@@ -1420,8 +1486,9 @@ function filterPickerList(list,keyword){
   if(!list) return;
   const term=(keyword||'').trim().toLowerCase();
   list.querySelectorAll('button[data-cat]').forEach(btn=>{
-    const text=(btn.getAttribute('data-cat')||'').toLowerCase();
-    btn.classList.toggle('hidden', term && !text.includes(term));
+    const raw=(btn.getAttribute('data-cat')||'').toLowerCase();
+    const disp=getCategoryDisplayName(btn.getAttribute('data-cat')||'').toLowerCase();
+    btn.classList.toggle('hidden', term && !raw.includes(term) && !disp.includes(term));
   });
 }
 async function applyPickerCategory(card,url,category,picker){
@@ -1432,7 +1499,7 @@ async function applyPickerCategory(card,url,category,picker){
   state.tabsData[idx].category=category;
   await saveTabs();
   closeCategoryPicker(picker);
-  toast(`已调整到 ${category}`);
+  toast(tr("toast.recategorized",{category:getCategoryDisplayName(category)}));
   render();
 }
 function onPickerKeydown(e,list,card,picker){
@@ -1469,7 +1536,7 @@ function renderCategories(data){
   const grouped=groupByCategory(list);
   const cats=Object.entries(grouped);
   if(!cats.length){
-    $categoryView.innerHTML='<div class="muted">暂无数据。右键网页空白处 → 插件 → 导入…</div>';
+    $categoryView.innerHTML='<div class="muted">'+tr("empty.no_data_hint")+'</div>';
     return;
   }
   cats.forEach(([cat,tabs])=>{
@@ -1477,13 +1544,13 @@ function renderCategories(data){
     card.className="cat-card";
     const preview=(tabs[0]?.title||"").slice(0,66);
     const meta=getCategoryMeta(cat);
-    const badge=`<span class="chip gray"${buildChipStyleAttr(meta)}>${buildChipIcon(meta)}<span class="chip-label">${cat}</span></span>`;
-    const countLabel=`共 ${tabs.length} 个标签页`;
-    card.innerHTML=`<div class="row" style="justify-content:space-between"><h3>${cat} <span class="muted">(${tabs.length})</span></h3>${badge}</div><p class="muted">${preview}</p><p class="cat-card-footer"><button type="button" class="cat-mindmap-btn" aria-label="查看思维导图" title="查看思维导图" aria-expanded="false">${ICON_MINDMAP}</button><span class="cat-card-count muted">${countLabel}</span></p>`;
+    const badge=`<span class="chip gray"${buildChipStyleAttr(meta)}>${buildChipIcon(meta)}<span class="chip-label">${getCategoryDisplayName(cat)}</span></span>`;
+    const countLabel=tr("empty.no_tabs_count",{count:tabs.length});
+    card.innerHTML=`<div class="row" style="justify-content:space-between"><h3>${getCategoryDisplayName(cat)} <span class="muted">(${tabs.length})</span></h3>${badge}</div><p class="muted">${preview}</p><p class="cat-card-footer"><button type="button" class="cat-mindmap-btn" aria-label="${tr('tab.view_mindmap')}" title="${tr('tab.view_mindmap')}" aria-expanded="false">${ICON_MINDMAP}</button><span class="cat-card-count muted">${countLabel}</span></p>`;
     const mindmapBtn=card.querySelector(".cat-mindmap-btn");
     const mindmapPopover=document.createElement("div");
     mindmapPopover.className="cat-mindmap-popover hidden";
-    mindmapPopover.innerHTML=`<div class="cat-mindmap-popover-header"><h4 class="cat-mindmap-popover-title">${cat}</h4><span class="cat-mindmap-popover-meta">${countLabel}</span></div><div class="cat-mindmap-popover-canvas"></div>`;
+    mindmapPopover.innerHTML=`<div class="cat-mindmap-popover-header"><h4 class="cat-mindmap-popover-title">${getCategoryDisplayName(cat)}</h4><span class="cat-mindmap-popover-meta">${countLabel}</span></div><div class="cat-mindmap-popover-canvas"></div>`;
     const mindmapCanvas=mindmapPopover.querySelector(".cat-mindmap-popover-canvas");
     const mindmapSvg=document.createElementNS("http://www.w3.org/2000/svg","svg");
     mindmapSvg.classList.add("cat-mindmap-popover-svg");
@@ -1498,7 +1565,7 @@ function renderCategories(data){
     const openBtn=document.createElement("button");
     openBtn.type="button";
     openBtn.className="cat-open-btn";
-    openBtn.title="在新窗口打开全部标签页";
+    openBtn.title=tr("tab.open_all_new_window");
     openBtn.innerHTML=ICON_OPEN_WINDOW;
     openBtn.addEventListener("click",async(e)=>{
       e.stopPropagation();
@@ -1545,14 +1612,14 @@ function renderCategories(data){
     $categoryView.appendChild(card);
   });
 }
-// function renderTabs(category,tabs){ $tabView.classList.remove("hidden"); $categoryView.classList.add("hidden"); $tabView.innerHTML=`<button id="back" class="back btn">← 返回分类</button><h2 style="margin:0 0 8px;font-size:18px">${category}</h2>`; const list=applyFilters(tabs); list.forEach(t=>{ const c=document.createElement("div"); c.className="tab-card"; const summaryHTML=t.summary?`<p class="muted line-2" style="margin:0 0 10px;">${t.summary}</p>`:""; const badge=`<span class="chip">${t.category||"未分类"}</span>`; const manualSelect=`<select class="cat-select hidden select" style="height:30px;">${state.activeCategories.map(x=>`<option value="${x}" ${x===(t.category||"未分类")?"selected":""}>${x}</option>`).join("")}</select>`; const adjustBtn=`<button class="btn btn-change" style="height:30px;">调整分类</button>`; c.innerHTML=`<a href="${t.url}" target="_blank" class="title line-2">${t.title||t.url}</a>${summaryHTML}<div class="row"><div class="cat-area">${badge}${manualSelect}${adjustBtn}</div><div class="row" style="margin-left:auto;"><button class="btn btn-star">${t.starred?"★ 已收藏":"☆ 收藏"}</button><button class="btn danger btn-delete">🗑 删除</button></div></div>`; const $sel=c.querySelector(".cat-select"); const $btn=c.querySelector(".btn-change"); $btn.addEventListener("click",()=>{ $sel.classList.toggle("hidden"); if(!$sel.classList.contains("hidden")) $sel.focus(); }); $sel.addEventListener("change",async e=>{ const val=e.target.value; const idx=state.tabsData.findIndex(x=>x.url===t.url); if(idx>=0){ state.tabsData[idx].category=val; await saveTabs(); $sel.classList.add("hidden"); render(); }}); $sel.addEventListener("blur",()=> $sel.classList.add("hidden")); c.querySelector(".btn-star").addEventListener("click",async()=>{ const idx=state.tabsData.findIndex(x=>x.url===t.url); if(idx>=0){ state.tabsData[idx].starred=!state.tabsData[idx].starred; await saveTabs(); render(); }}); c.querySelector(".btn-delete").addEventListener("click",async()=>{ state.tabsData=state.tabsData.filter(x=>x.url!==t.url); await saveTabs(); render(); }); $tabView.appendChild(c); }); document.getElementById("back").onclick=async()=>{ state.lastCategory=null; await chrome.storage.local.remove("lastCategory"); render(); }; }
+// function renderTabs(category,tabs){ $tabView.classList.remove("hidden"); $categoryView.classList.add("hidden"); $tabView.innerHTML=`<button id="back" class="back btn">${tr("common.back")}</button><h2 style="margin:0 0 8px;font-size:18px">${getCategoryDisplayName(category)}</h2>`; const list=applyFilters(tabs); list.forEach(t=>{ const c=document.createElement("div"); c.className="tab-card"; const summaryHTML=t.summary?`<p class="muted line-2" style="margin:0 0 10px;">${t.summary}</p>`:""; const badge=`<span class="chip">${t.category||"未分类"}</span>`; const manualSelect=`<select class="cat-select hidden select" style="height:30px;">${state.activeCategories.map(x=>`<option value="${x}" ${x===(t.category||"未分类")?"selected":""}>${x}</option>`).join("")}</select>`; const adjustBtn=`<button class="btn btn-change" style="height:30px;">调整分类</button>`; c.innerHTML=`<a href="${t.url}" target="_blank" class="title line-2">${t.title||t.url}</a>${summaryHTML}<div class="row"><div class="cat-area">${badge}${manualSelect}${adjustBtn}</div><div class="row" style="margin-left:auto;"><button class="btn btn-star">${t.starred?"★ 已收藏":"☆ 收藏"}</button><button class="btn danger btn-delete">🗑 删除</button></div></div>`; const $sel=c.querySelector(".cat-select"); const $btn=c.querySelector(".btn-change"); $btn.addEventListener("click",()=>{ $sel.classList.toggle("hidden"); if(!$sel.classList.contains("hidden")) $sel.focus(); }); $sel.addEventListener("change",async e=>{ const val=e.target.value; const idx=state.tabsData.findIndex(x=>x.url===t.url); if(idx>=0){ state.tabsData[idx].category=val; await saveTabs(); $sel.classList.add("hidden"); render(); }}); $sel.addEventListener("blur",()=> $sel.classList.add("hidden")); c.querySelector(".btn-star").addEventListener("click",async()=>{ const idx=state.tabsData.findIndex(x=>x.url===t.url); if(idx>=0){ state.tabsData[idx].starred=!state.tabsData[idx].starred; await saveTabs(); render(); }}); c.querySelector(".btn-delete").addEventListener("click",async()=>{ state.tabsData=state.tabsData.filter(x=>x.url!==t.url); await saveTabs(); render(); }); $tabView.appendChild(c); }); document.getElementById("back").onclick=async()=>{ state.lastCategory=null; await chrome.storage.local.remove("lastCategory"); render(); }; }
 function renderTabs(category,tabs){
   $tabView.classList.remove("hidden");
   $categoryView.classList.add("hidden");
   activePicker=null;
   activeTrigger=null;
   activeCard=null;
-  $tabView.innerHTML=`<button id="back" class="back btn">← 返回分类</button><h2 style="margin:0 0 8px;font-size:18px">${category}</h2>`;
+  $tabView.innerHTML=`<button id="back" class="back btn">${tr("common.back")}</button><h2 style="margin:0 0 8px;font-size:18px">${getCategoryDisplayName(category)}</h2>`;
   const list=applyFilters(tabs);
   list.forEach(t=>{
     const c=document.createElement("div");
@@ -1560,11 +1627,12 @@ function renderTabs(category,tabs){
     c.setAttribute("data-url",t.url);
     const summaryText=(t.summary||"").trim();
     const summaryHTML=summaryText?`<p class="tab-summary line-2">${summaryText}</p>`:"";
-    const catLabel=t.category||"未分类";
-    const meta=getCategoryMeta(catLabel);
+    const catValue=t.category||"未分类";
+    const catLabel=getCategoryDisplayName(catValue);
+    const meta=getCategoryMeta(catValue);
     const badge=`<button class="chip chip-category" type="button"${buildChipStyleAttr(meta)}>${buildChipIcon(meta)}<span class="chip-label">${catLabel}</span></button>`;
     const pickerItems=buildPickerOptions(t);
-    const categoryControl=`<span class="tab-meta-category cat-area">${badge}<div class="picker-panel hidden" data-picker tabindex="-1"><div class="picker-shell"><div class="picker-header"><div><span class="picker-label">当前类别</span><span class="picker-current">${t.category||"未分类"}</span></div><button class="picker-close" type="button">×</button></div><div class="picker-body"><div class="picker-search"><input class="input picker-input" type="text" placeholder="搜索分类..."></div><div class="picker-list">${pickerItems}</div></div><div class="picker-footer"><button class="btn-link" type="button" data-manage>管理分类</button></div></div></div></div></span>`;
+    const categoryControl=`<span class="tab-meta-category cat-area">${badge}<div class="picker-panel hidden" data-picker tabindex="-1"><div class="picker-shell"><div class="picker-header"><div><span class="picker-label">${tr('tab.current_category')}</span><span class="picker-current">${getCategoryDisplayName(t.category||"未分类")}</span></div><button class="picker-close" type="button">×</button></div><div class="picker-body"><div class="picker-search"><input class="input picker-input" type="text" placeholder="${tr('tab.search_categories')}"></div><div class="picker-list">${pickerItems}</div></div><div class="picker-footer"><button class="btn-link" type="button" data-manage>${tr('tab.manage_categories')}</button></div></div></div></div></span>`;
     const hostLabel=t.host||extractHost(t.url||"","");
     const timeLabel=t.ts?formatTimestamp(t.ts):"";
     const metaPieces=[];
@@ -1573,7 +1641,7 @@ function renderTabs(category,tabs){
     metaPieces.push(categoryControl);
     const isStarred=!!t.starred;
     const favIcon=isStarred?ICON_STAR_FILLED:ICON_STAR_OUTLINE;
-    const favLabel=isStarred?"���ղ�":"�ղ�";
+    const favLabel=isStarred?tr("fav.unstar"):tr("fav.star");
     const hasMarkdown=typeof t.markd==="string"&&t.markd.trim().length>0;
     const isCapturing=markdownBusy.has(t.url);
     const hasNote=typeof t.note_markd==="string"&&t.note_markd.trim().length>0;
@@ -1585,16 +1653,16 @@ function renderTabs(category,tabs){
     }
     if(isCapturing) noteClassList.push("loading");
     const noteBtnClass=noteClassList.join(" ");
-    const noteTitle=hasMarkdown?"查看 Markdown（按住 Shift 可重新抓取）":"抓取 Markdown";
-    const noteSr=hasMarkdown?"查看 Markdown 预览":"抓取 Markdown";
+    const noteTitle=hasMarkdown?tr("tab.view_md_shift"):tr("tab.capture_md");
+    const noteSr=hasMarkdown?tr("tab.view_md_preview"):tr("tab.capture_md");
     const isNoteGenerating=noteBusy.has(t.url);
     const aiClassList=["action-pill-btn","ai-note-btn"];
     if(hasNote) aiClassList.push("ai-note-btn--done");
     if(hasNote) aiClassList.push("active");
     if(isNoteGenerating) aiClassList.push("loading");
     const aiBtnClass=aiClassList.join(" ");
-    const aiTitle=hasNote?"查看 AI 笔记（按住 Shift 可重新生成）":"生成 AI 笔记";
-    const aiLabel=hasNote?"查看 AI 笔记":"AI 笔记";
+    const aiTitle=hasNote?tr("tab.view_ai_shift"):tr("tab.gen_ai_note");
+    const aiLabel=hasNote?tr("tab.view_ai_note"):tr("viewer.tab_ai_note");
     const actionsHTML=`<div class="tab-actions">
       <button type="button" class="${aiBtnClass}" data-role="ai-note" title="${aiTitle}">
         <span>${aiLabel}</span>
@@ -1603,13 +1671,13 @@ function renderTabs(category,tabs){
         <span class="action-icon">${ICON_NOTE}</span>
         <span class="sr-only">${noteSr}</span>
       </button>
-      <button type="button" class="action-icon-btn action-icon-btn-fav${isStarred?" active":""}" data-role="favorite" title="收藏">
+      <button type="button" class="action-icon-btn action-icon-btn-fav${isStarred?" active":""}" data-role="favorite" title="${tr("fav.star")}">
         <span class="action-icon">${favIcon}</span>
         <span class="sr-only">${favLabel}</span>
       </button>
-      <button type="button" class="action-icon-btn action-icon-btn-danger" data-role="delete" title="删除">
+      <button type="button" class="action-icon-btn action-icon-btn-danger" data-role="delete" title="${tr("tab.delete")}">
         <span class="action-icon">${ICON_TRASH}</span>
-        <span class="sr-only">删除</span>
+        <span class="sr-only">${tr("tab.delete")}</span>
       </button>
     </div>`;
     const metaItemsHTML=metaPieces.length?metaPieces.join('<span class="tab-meta-sep">·</span>'):"";
@@ -1638,7 +1706,7 @@ function renderTabs(category,tabs){
       if(aiBtn) aiBtn.setAttribute("disabled","disabled");
       const overlay=document.createElement("div");
       overlay.className="tab-note-overlay";
-      overlay.innerHTML='<div class="overlay-spinner"></div><span>AI 笔记生成中…</span>';
+      overlay.innerHTML=`<div class="overlay-spinner"></div><span>${tr("common.ai_note_generating")}</span>`;
       c.appendChild(overlay);
     }
     if(markdBtn){
@@ -1658,7 +1726,7 @@ function renderTabs(category,tabs){
             markdown:reference,
             aiMarkdown:aiNote
           }).catch(err=>{
-            if(err&&err.message!=="EMPTY_MARKDOWN") toast(`预览失败：${err.message||err}`);
+            if(err&&err.message!=="EMPTY_MARKDOWN") toast(tr("toast.preview_failed",{detail:err.message||err}));
           });
           return;
         }
@@ -1679,12 +1747,12 @@ function renderTabs(category,tabs){
           const reference=typeof entry.markd==="string"?entry.markd:"";
           const aiNote=typeof entry.note_markd==="string"?entry.note_markd:"";
           openMarkdownViewer({
-            title:entry.title||entry.url||"AI 笔记",
+            title:entry.title||entry.url||tr("viewer.tab_ai_note"),
             markdown:reference,
             aiMarkdown:aiNote,
             source:"ai"
           }).catch(err=>{
-            if(err&&err.message!=="EMPTY_MARKDOWN") toast(`预览失败：${err.message||err}`);
+            if(err&&err.message!=="EMPTY_MARKDOWN") toast(tr("toast.preview_failed",{detail:err.message||err}));
           });
           return;
         }
@@ -1693,7 +1761,7 @@ function renderTabs(category,tabs){
           return;
         }
         if(!hasMarkdown){
-          toast("请先抓取 Markdown 内容");
+          toast(tr("error.need_markdown"));
           return;
         }
         enqueueAiTask(t.url,{button:aiBtn,card:c}).catch(()=>{});
@@ -1772,9 +1840,9 @@ async function onSaveMaybeClassify(){
     const value=getSelectedCaptureMode();
     state.captureMode=value;
     await chrome.storage.local.set({captureMode:value});
-    const label=value==="firecrawl"?"Firecrawl 抓取":"本地抓取";
-    if($m_status) $m_status.textContent=`已保存，当前策略：${label}`;
-    toast(`抓取模式已设置为 ${label}`);
+    const label=value==="firecrawl"?tr("label.firecrawl_capture"):tr("label.local_capture");
+    if($m_status) $m_status.textContent=tr("status.saved_strategy",{label});
+    toast(tr("toast.capture_mode_set",{label}));
     return;
   }
   if(state.settingsTab==="note"){
@@ -1786,25 +1854,25 @@ async function onSaveMaybeClassify(){
     await chrome.storage.local.set({noteStyle:style,noteSupplement:supplement});
     syncNoteStyleUI();
     syncNoteSupplementInput();
-    if($m_status) $m_status.textContent="AI 笔记设置已保存";
-    toast("AI 笔记设置已保存");
+    if($m_status) $m_status.textContent=tr("toast.note_settings_saved");
+    toast(tr("toast.note_settings_saved"));
     return;
   }
   if(state.settingsTab==="import"){
     const value=!!($importCloseToggle&&$importCloseToggle.checked);
     state.closeImportedTabs=value;
     await chrome.storage.local.set({closeImportedTabs:value});
-    if($m_status) $m_status.textContent="导入设置已保存";
-    toast("导入设置已保存");
+    if($m_status) $m_status.textContent=tr("toast.import_settings_saved");
+    toast(tr("toast.import_settings_saved"));
     return;
   }
   if(state.settingsTab==="hub"){
     const value=getSelectedHubMode();
     state.hubImportMode=value;
     await chrome.storage.local.set({hubImportMode:value});
-    const label=value==="overwrite"?"覆盖":"追加";
-    if($m_status) $m_status.textContent=`已保存，Hub 导入默认模式：${label}`;
-    toast(`Hub 导入默认模式设置为${label}`);
+    const label=value==="overwrite"?tr("label.overwrite"):tr("label.append");
+    if($m_status) $m_status.textContent=tr("status.saved_hub_mode",{label});
+    toast(tr("toast.hub_mode_set",{label}));
     return;
   }
   if(state.settingsTab==="general"){
@@ -1813,16 +1881,16 @@ async function onSaveMaybeClassify(){
     await chrome.storage.local.set({generalConfig:config});
     updateTaskQueuesFromConfig();
     syncGeneralConfigInputs();
-    if($m_status) $m_status.textContent="通用配置已保存";
-    toast("通用配置已保存");
+    if($m_status) $m_status.textContent=tr("toast.general_saved");
+    toast(tr("toast.general_saved"));
     return;
   }
   if(state.apiSubTab==="firecrawl"){
     const fcKey=($m_firecrawlKey?.value||"").trim();
     const fcBase=normalizeFirecrawlBase($m_firecrawlBase?.value||"");
     await chrome.storage.local.set({firecrawlKey:fcKey,firecrawlBase:fcBase});
-    if($m_status) $m_status.textContent="Firecrawl 设置已保存";
-    toast("Firecrawl 设置已保存");
+    if($m_status) $m_status.textContent=tr("toast.firecrawl_saved");
+    toast(tr("toast.firecrawl_saved"));
     return;
   }
   const apiKey=($m_apiKey.value||"").trim();
@@ -1830,46 +1898,46 @@ async function onSaveMaybeClassify(){
   const apiModel=($m_apiModel.value||"gpt-4o-mini").trim();
   await chrome.storage.local.set({apiKey,apiBase,apiModel});
   state.apiConfigured=!!apiKey;
-  if($m_status) $m_status.textContent="API 设置已保存";
-  toast("API 设置已保存");
+  if($m_status) $m_status.textContent=tr("toast.api_saved");
+  toast(tr("toast.api_saved"));
 }
 async function onTestConnection(){
   if(state.settingsTab!=="api"){
-    if($m_status) $m_status.textContent="请先切换到 API 设置选项卡后再测试连接。";
+    if($m_status) $m_status.textContent=tr("status.switch_api_tab");
     return;
   }
   if(state.apiSubTab==="firecrawl"){
     const key=($m_firecrawlKey?.value||"").trim();
     const base=normalizeFirecrawlBase($m_firecrawlBase?.value||"");
     if(!key){
-      if($m_status) $m_status.textContent="请先填写 Firecrawl API Key。";
-      toast("请先填写 Firecrawl API Key");
+      if($m_status) $m_status.textContent=tr("status.need_firecrawl_key");
+      toast(tr("toast.need_firecrawl_key"));
       return;
     }
-    if($m_status) $m_status.textContent="Firecrawl 测试中...";
+    if($m_status) $m_status.textContent=tr("status.firecrawl_testing");
     try{
       const res=await chrome.runtime.sendMessage({type:"test_firecrawl", apiKey:key, apiBase:base});
       if(res?.ok){
-        if($m_status) $m_status.textContent="连接成功（Firecrawl 可用）";
+        if($m_status) $m_status.textContent=tr("status.firecrawl_ok");
       }else{
-        const errMsg=res?.error||"未知错误";
-        if($m_status) $m_status.textContent="连接失败："+errMsg;
-        toast(`Firecrawl 测试失败：${errMsg}`);
+        const errMsg=res?.error||tr("common.unknown_error");
+        if($m_status) $m_status.textContent=tr("status.failed_detail",{detail:errMsg});
+        toast(tr("toast.firecrawl_test_failed",{detail:errMsg}));
       }
     }catch(e){
       const err=e?.message||String(e);
-      if($m_status) $m_status.textContent="连接失败："+err;
-      toast(`Firecrawl 测试失败：${err}`);
+      if($m_status) $m_status.textContent=tr("status.failed_detail",{detail:err});
+      toast(tr("toast.firecrawl_test_failed",{detail:err}));
     }
     return;
   }
-  if($m_status) $m_status.textContent="测试中...";
+  if($m_status) $m_status.textContent=tr("status.testing");
   try{
     const base=($m_apiBase.value.trim()||"https://api.openai.com/v1").replace(/\/+$/,"");
     const key=$m_apiKey.value.trim();
     const ok1=await withTimeout(signal=>fetch(`${base}/models`,{headers:{Authorization:`Bearer ${key}`},signal}));
     if(ok1.ok){
-      if($m_status) $m_status.textContent="连接成功（/models 可用）";
+      if($m_status) $m_status.textContent=tr("status.models_ok");
       return;
     }
   }catch(_){ /* ignore */ }
@@ -1877,9 +1945,9 @@ async function onTestConnection(){
     const base=($m_apiBase.value.trim()||"https://api.openai.com/v1").replace(/\/+$/,"");
     const key=$m_apiKey.value.trim();
     const res=await withTimeout(signal=>fetch(`${base}/chat/completions`,{method:"POST",signal,headers:{"Content-Type":"application/json",Authorization:`Bearer ${key}`},body:JSON.stringify({model:($m_apiModel.value.trim()||"gpt-4o-mini"),messages:[{role:"user",content:"ping"}],max_tokens:1})}));
-    if($m_status) $m_status.textContent=res.ok?"连接成功（chat/completions 可用）":"连接失败";
+    if($m_status) $m_status.textContent=res.ok?tr("status.chat_ok"):tr("status.failed");
   }catch(e){
-    if($m_status) $m_status.textContent="连接失败："+(e?.message||e);
+    if($m_status) $m_status.textContent=tr("status.failed_detail",{detail:e?.message||e});
   }
 }
 async function withTimeout(factory,ms=15000){ const c=new AbortController(); const t=setTimeout(()=>c.abort(),ms); try{ const r=await factory(c.signal); clearTimeout(t); return r; }catch(e){ clearTimeout(t); throw e; } }
@@ -1895,7 +1963,7 @@ async function openCatsModal(){
 function renderCatsList(){
   const cats=[...new Set(state.activeCategories||[])];
   if(!cats.length){
-    $catsList.innerHTML="<span class='muted'>暂无激活分类</span>";
+    $catsList.innerHTML="<span class='muted'>"+tr("empty.no_active_cats")+"</span>";
     return;
   }
   $catsList.innerHTML=cats.map(c=>{
@@ -1904,7 +1972,7 @@ function renderCatsList(){
     const styleAttr=buildChipStyleAttr(meta);
     const iconHtml=buildChipIcon(meta);
     const deleteButton=deletable?`<button data-del="${c}" class="xbtn">×</button>`:"";
-    return `<span class="chip ghost cat-manage-chip" data-cat="${c}"${styleAttr}>${iconHtml}<span class="chip-label">${c}</span>${deleteButton}</span>`;
+    return `<span class="chip ghost cat-manage-chip" data-cat="${c}"${styleAttr}>${iconHtml}<span class="chip-label">${getCategoryDisplayName(c)}</span>${deleteButton}</span>`;
   }).join("");
   $catsList.querySelectorAll("button[data-del]").forEach(btn=>{
     btn.addEventListener("click",async(e)=>{
@@ -2026,7 +2094,7 @@ function ensureQueueCapacity(queue,label){
   const limit=queue.limit||1;
   const pending=queue.running+queue.queue.length;
   if(pending>=limit){
-    toast(`${label}任务已达上限，请稍后再试`);
+    toast(tr("toast.queue_full",{label}));
     return false;
   }
   return true;

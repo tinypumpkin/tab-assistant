@@ -1,4 +1,5 @@
-import { BASE_PROMPT, NOTE_STYLES, DEFAULT_NOTE_STYLE, AI_SUM } from "./note-templates.js";
+import { DEFAULT_NOTE_STYLE, getBasePrompt, getNoteStyles, getAiSum, isValidNoteStyle } from "./note-templates.js";
+import { getPromptLanguageVars, DEFAULT_PROMPT_LANGUAGE } from "./prompt-language-vars.js";
 
 function applyTemplate(template, values) {
   if (typeof template !== "string") return "";
@@ -20,13 +21,25 @@ export function buildNotePrompt({
   category = "",
   markd = "",
   styleKey = DEFAULT_NOTE_STYLE,
-  supplement = ""
+  supplement = "",
+  noteLanguage = DEFAULT_PROMPT_LANGUAGE
 } = {}) {
-  const key = NOTE_STYLES[styleKey] ? styleKey : DEFAULT_NOTE_STYLE;
-  const base = applyTemplate(BASE_PROMPT, { title, category, markd });
-  const stylePrompt = NOTE_STYLES[key] || "";
+  const key = isValidNoteStyle(styleKey) ? styleKey : DEFAULT_NOTE_STYLE;
+  const lv = getPromptLanguageVars(noteLanguage);
+  const base = applyTemplate(getBasePrompt(noteLanguage), {
+    title,
+    category,
+    markd,
+    output_language_name: lv.output_language_name,
+    preserve_terms_instruction: lv.preserve_terms_instruction
+  });
+  const stylePrompt = getNoteStyles(noteLanguage)[key] || "";
   const manual = typeof supplement === "string" ? supplement.trim() : "";
-  const supplementBlock = manual ? `补充说明: ${manual}` : "";
-  const parts = [base, stylePrompt, supplementBlock, AI_SUM].filter(Boolean);
+  const supplementBlock = manual ? `${lv.supplement_label}: ${manual}` : "";
+  const summary = applyTemplate(getAiSum(noteLanguage), {
+    output_language_name: lv.output_language_name,
+    ai_summary_title: lv.ai_summary_title
+  });
+  const parts = [base, stylePrompt, supplementBlock, summary].filter(Boolean);
   return sanitizeMultiline(parts.join("\n\n"));
 }
