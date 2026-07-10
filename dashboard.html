@@ -103,10 +103,14 @@
             </button>
             <div id="noteStyleMenu" class="filter-menu hidden" role="listbox" tabindex="-1"></div>
           </div>
-          <select id="noteLangSelect" class="select" style="min-width:140px;width:auto;padding:0 14px;font-size:14px;align-self:flex-start">
-            <option value="zh-CN" data-i18n="lang.zh-CN">简体中文</option>
-            <option value="en-US" data-i18n="lang.en-US">English</option>
-          </select>
+          <label data-i18n="settings.note.output_language">笔记输出语言</label>
+          <div id="noteLangDropdown" class="filter-dropdown">
+            <button id="noteLangToggle" class="filter-toggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="noteLangMenu">
+              <span id="noteLangLabel" class="filter-label">简体中文</span>
+              <span class="filter-caret">⌄</span>
+            </button>
+            <div id="noteLangMenu" class="filter-menu hidden" role="listbox" tabindex="-1"></div>
+          </div>
           <label for="noteSupplement" data-i18n="settings.note.supplement">补充</label>
           <textarea id="noteSupplement" class="input" rows="4" data-i18n-placeholder="settings.note.supplement_placeholder" placeholder="笔记需要罗列出 xxx 关键点..."></textarea>
           <p class="muted small" data-i18n="settings.note.supplement_help">补充信息会一并传给模型，用于强调关键点或额外格式要求。</p>
@@ -135,10 +139,14 @@
         <div id="settingsViewGeneral" class="settings-view hidden">
           <h3 class="settings-title" data-i18n="settings.tab.general">通用配置</h3>
           <p class="muted" data-i18n="settings.general.desc">配置抓取与 AI 生成的批量参数，保存后立即生效（超时、抓取/AI 并发数、重试次数、一键生成）。</p>
-          <select id="uiLangSelect" class="select" style="min-width:140px;width:auto;padding:0 14px;font-size:14px;align-self:flex-start">
-            <option value="zh-CN" data-i18n="lang.zh-CN">简体中文</option>
-            <option value="en-US" data-i18n="lang.en-US">English</option>
-          </select>
+          <label data-i18n="settings.general.ui_language">界面语言</label>
+          <div id="uiLangDropdown" class="filter-dropdown">
+            <button id="uiLangToggle" class="filter-toggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="uiLangMenu">
+              <span id="uiLangLabel" class="filter-label">简体中文</span>
+              <span class="filter-caret">⌄</span>
+            </button>
+            <div id="uiLangMenu" class="filter-menu hidden" role="listbox" tabindex="-1"></div>
+          </div>
           <div class="grid2 settings-grid">
             <label for="generalTimeout" class="muted" data-i18n="settings.general.timeout">超时时间</label>
             <input id="generalTimeout" class="input" type="number" min="1" max="200" data-i18n-placeholder="settings.general.placeholder_timeout" placeholder="最大 200 秒">

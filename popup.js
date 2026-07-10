@@ -70,7 +70,7 @@ function normalizeFirecrawlBase(base){
   return trimmed.replace(/\/+$/,"");
 }
 const state={tabsData:[],lastCategory:null,query:"",filter:"all",apiConfigured:false,customCategories:[],activeCategories:[],defaultCategories:["技术","新闻","视频","学术","社交","其他"],apiSubTab:"llm",closeImportedTabs:false,settingsTab:"api",hubImportMode:"append",categoryMeta:{},captureMode:"local",noteStyle:DEFAULT_NOTE_STYLE,noteSupplement:"",noteLanguage:"zh-CN",generalConfig:{...GENERAL_CONFIG_DEFAULTS}};
-let $categoryView,$tabView,$search,$filterDropdown,$filterToggle,$filterMenu,$filterLabel,$settingsBtn,$manageCatsBtn,$sideSpinner,$toast,$modal,$m_apiKey,$m_apiBase,$m_apiModel,$m_save,$m_test,$m_close,$m_status,$catsModal,$catsList,$newCatInput,$btnReAuto,$btnReAll,$btnCatsClose,$hubDropdown,$hubBtn,$hubMenu,$hubExport,$hubImport,$importFile,$settingsTabs,$settingsViewApi,$settingsViewGeneral,$settingsViewImport,$settingsViewCapture,$settingsViewHub,$importCloseToggle,$hubModeInputs,$catEditPopover,$apiSubTabs,$apiPanelLlm,$apiPanelFirecrawl,$apiSubTitle,$m_firecrawlKey,$m_firecrawlBase,$captureModeInputs,$settingsViewNote,$noteStyleDropdown,$noteStyleToggle,$noteStyleMenu,$noteStyleLabel,$noteSupplementInput,$generalTimeoutInput,$generalCaptureLimitInput,$generalAiLimitInput,$generalRetryLimitInput,$generalAiAutoToggle,$uiLangSelect,$noteLangSelect;
+let $categoryView,$tabView,$search,$filterDropdown,$filterToggle,$filterMenu,$filterLabel,$settingsBtn,$manageCatsBtn,$sideSpinner,$toast,$modal,$m_apiKey,$m_apiBase,$m_apiModel,$m_save,$m_test,$m_close,$m_status,$catsModal,$catsList,$newCatInput,$btnReAuto,$btnReAll,$btnCatsClose,$hubDropdown,$hubBtn,$hubMenu,$hubExport,$hubImport,$importFile,$settingsTabs,$settingsViewApi,$settingsViewGeneral,$settingsViewImport,$settingsViewCapture,$settingsViewHub,$importCloseToggle,$hubModeInputs,$catEditPopover,$apiSubTabs,$apiPanelLlm,$apiPanelFirecrawl,$apiSubTitle,$m_firecrawlKey,$m_firecrawlBase,$captureModeInputs,$settingsViewNote,$noteStyleDropdown,$noteStyleToggle,$noteStyleMenu,$noteStyleLabel,$noteSupplementInput,$generalTimeoutInput,$generalCaptureLimitInput,$generalAiLimitInput,$generalRetryLimitInput,$generalAiAutoToggle,$uiLangDropdown,$uiLangToggle,$uiLangMenu,$uiLangLabel,$noteLangDropdown,$noteLangToggle,$noteLangMenu,$noteLangLabel;
 let activePicker=null;
 let activeTrigger=null;
 let activeCard=null;
@@ -81,6 +81,8 @@ const aiSlots=new Set();
 let activeCatEdit=null;
 let filterMenuOpen=false;
 let noteStyleMenuOpen=false;
+let uiLangMenuOpen=false;
+let noteLangMenuOpen=false;
 let activeCategoryMindmap=null;
 
 function sanitizeCategoryMeta(meta){
@@ -445,9 +447,15 @@ function bindUI(){
   $generalAiLimitInput=document.getElementById("generalAiLimit");
   $generalRetryLimitInput=document.getElementById("generalRetryLimit");
   $generalAiAutoToggle=document.getElementById("generalAiAutoToggle");
-  $uiLangSelect=document.getElementById("uiLangSelect");
-  $noteLangSelect=document.getElementById("noteLangSelect");
-  syncLangSelects();
+  $uiLangDropdown=document.getElementById("uiLangDropdown");
+  $uiLangToggle=document.getElementById("uiLangToggle");
+  $uiLangMenu=document.getElementById("uiLangMenu");
+  $uiLangLabel=document.getElementById("uiLangLabel");
+  $noteLangDropdown=document.getElementById("noteLangDropdown");
+  $noteLangToggle=document.getElementById("noteLangToggle");
+  $noteLangMenu=document.getElementById("noteLangMenu");
+  $noteLangLabel=document.getElementById("noteLangLabel");
+  renderLangDropdowns();
   if($settingsTabs.length){ $settingsTabs.forEach(btn=>{ btn.addEventListener("click",()=> switchSettingsTab(btn.getAttribute("data-settings-tab")||"api")); }); }
   if($apiSubTabs.length){ $apiSubTabs.forEach(btn=>{ btn.addEventListener("click",()=>{ const tab=btn.getAttribute("data-api-tab")||"llm"; switchApiSubTab(tab); }); }); }
   if($importCloseToggle){ syncImportToggle(); $importCloseToggle.addEventListener("change",()=>{ if(state.settingsTab==="import" && $m_status) $m_status.textContent=tr("common.save_to_apply"); }); }
@@ -486,17 +494,23 @@ function bindUI(){
   if($generalAiAutoToggle){
     $generalAiAutoToggle.addEventListener("change",markGeneralSettingsDirty);
   }
-  if($uiLangSelect){
-    $uiLangSelect.addEventListener("change", async ()=>{
-      await setLocale($uiLangSelect.value);
+  if($uiLangToggle){
+    $uiLangToggle.addEventListener("click",e=>{
+      e.stopPropagation();
+      toggleUiLangMenu();
     });
   }
-  if($noteLangSelect){
-    $noteLangSelect.addEventListener("change", ()=>{
-      state.noteLanguage=$noteLangSelect.value==="en-US"?"en-US":"zh-CN";
-      chrome.storage.local.set({noteLanguage:state.noteLanguage});
-      if(state.settingsTab==="note" && $m_status) $m_status.textContent=tr("common.save_to_apply");
+  if($uiLangMenu){
+    $uiLangMenu.addEventListener("click",e=> e.stopPropagation());
+  }
+  if($noteLangToggle){
+    $noteLangToggle.addEventListener("click",e=>{
+      e.stopPropagation();
+      toggleNoteLangMenu();
     });
+  }
+  if($noteLangMenu){
+    $noteLangMenu.addEventListener("click",e=> e.stopPropagation());
   }
   document.addEventListener("click", onDocumentClickCloseHub);
   document.addEventListener("keydown", e=>{
@@ -506,6 +520,8 @@ function bindUI(){
       if(!$catEditPopover?.classList.contains("hidden")) closeCatEditPopover();
       if(filterMenuOpen) closeFilterMenu();
       if(noteStyleMenuOpen) closeNoteStyleMenu();
+      if(uiLangMenuOpen) closeUiLangMenu();
+      if(noteLangMenuOpen) closeNoteLangMenu();
       if(activeCategoryMindmap) closeCategoryMindmapPopover();
     }
   });
@@ -909,12 +925,111 @@ function reserveAiSlot(url){
 function releaseAiSlot(url){
   aiSlots.delete(url);
 }
-function syncLangSelects(){
-  if($uiLangSelect) $uiLangSelect.value=getLocale();
-  if($noteLangSelect) $noteLangSelect.value=state.noteLanguage==="en-US"?"en-US":"zh-CN";
+const LANG_OPTIONS=[
+  {value:"zh-CN",i18nKey:"lang.zh-CN"},
+  {value:"en-US",i18nKey:"lang.en-US"}
+];
+function renderLangDropdowns(){
+  renderUiLangMenu();
+  renderNoteLangMenu();
+}
+function renderUiLangMenu(){
+  syncUiLangLabel();
+  if(!$uiLangMenu) return;
+  $uiLangMenu.innerHTML=LANG_OPTIONS.map(({value,i18nKey})=>{
+    const selected=value===getLocale();
+    const activeClass=selected?" active":"";
+    const check=selected?'<span class="filter-option-check">&#10003;</span>':"";
+    return `<button type="button" class="filter-option${activeClass}" data-value="${value}" role="option" aria-selected="${selected}"><span class="filter-option-label">${tr(i18nKey)}</span>${check}</button>`;
+  }).join("");
+  $uiLangMenu.querySelectorAll(".filter-option").forEach(btn=>{
+    btn.addEventListener("click",async ()=>{
+      await setLocale(btn.getAttribute("data-value")||"zh-CN");
+      closeUiLangMenu();
+    });
+  });
+}
+function syncUiLangLabel(){
+  if(!$uiLangLabel) return;
+  $uiLangLabel.textContent=tr("lang."+getLocale());
+}
+function renderNoteLangMenu(){
+  syncNoteLangLabel();
+  if(!$noteLangMenu) return;
+  $noteLangMenu.innerHTML=LANG_OPTIONS.map(({value,i18nKey})=>{
+    const selected=value===state.noteLanguage;
+    const activeClass=selected?" active":"";
+    const check=selected?'<span class="filter-option-check">&#10003;</span>':"";
+    return `<button type="button" class="filter-option${activeClass}" data-value="${value}" role="option" aria-selected="${selected}"><span class="filter-option-label">${tr(i18nKey)}</span>${check}</button>`;
+  }).join("");
+  $noteLangMenu.querySelectorAll(".filter-option").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      state.noteLanguage=btn.getAttribute("data-value")==="en-US"?"en-US":"zh-CN";
+      chrome.storage.local.set({noteLanguage:state.noteLanguage});
+      syncNoteLangLabel();
+      if(state.settingsTab==="note" && $m_status) $m_status.textContent=tr("common.save_to_apply");
+      closeNoteLangMenu();
+    });
+  });
+}
+function syncNoteLangLabel(){
+  if(!$noteLangLabel) return;
+  $noteLangLabel.textContent=tr("lang."+state.noteLanguage);
+}
+function openUiLangMenu(){
+  if(!$uiLangDropdown||!$uiLangMenu) return;
+  if(uiLangMenuOpen) return;
+  if(filterMenuOpen) closeFilterMenu();
+  if(noteStyleMenuOpen) closeNoteStyleMenu();
+  if(noteLangMenuOpen) closeNoteLangMenu();
+  closeHubMenu();
+  uiLangMenuOpen=true;
+  $uiLangDropdown.classList.add("open");
+  $uiLangMenu.classList.remove("hidden");
+  if($uiLangToggle) $uiLangToggle.setAttribute("aria-expanded","true");
+  renderUiLangMenu();
+  requestAnimationFrame(()=> $uiLangMenu?.focus());
+}
+function closeUiLangMenu(){
+  if(!$uiLangDropdown||!$uiLangMenu) return;
+  if(!uiLangMenuOpen) return;
+  uiLangMenuOpen=false;
+  $uiLangDropdown.classList.remove("open");
+  $uiLangMenu.classList.add("hidden");
+  if($uiLangToggle) $uiLangToggle.setAttribute("aria-expanded","false");
+}
+function toggleUiLangMenu(){
+  if(uiLangMenuOpen) closeUiLangMenu();
+  else openUiLangMenu();
+}
+function openNoteLangMenu(){
+  if(!$noteLangDropdown||!$noteLangMenu) return;
+  if(noteLangMenuOpen) return;
+  if(filterMenuOpen) closeFilterMenu();
+  if(noteStyleMenuOpen) closeNoteStyleMenu();
+  if(uiLangMenuOpen) closeUiLangMenu();
+  closeHubMenu();
+  noteLangMenuOpen=true;
+  $noteLangDropdown.classList.add("open");
+  $noteLangMenu.classList.remove("hidden");
+  if($noteLangToggle) $noteLangToggle.setAttribute("aria-expanded","true");
+  renderNoteLangMenu();
+  requestAnimationFrame(()=> $noteLangMenu?.focus());
+}
+function closeNoteLangMenu(){
+  if(!$noteLangDropdown||!$noteLangMenu) return;
+  if(!noteLangMenuOpen) return;
+  noteLangMenuOpen=false;
+  $noteLangDropdown.classList.remove("open");
+  $noteLangMenu.classList.add("hidden");
+  if($noteLangToggle) $noteLangToggle.setAttribute("aria-expanded","false");
+}
+function toggleNoteLangMenu(){
+  if(noteLangMenuOpen) closeNoteLangMenu();
+  else openNoteLangMenu();
 }
 function refreshSettingsI18n(){
-  syncLangSelects();
+  renderLangDropdowns();
   if($apiSubTitle){
     $apiSubTitle.textContent = state.apiSubTab==="firecrawl" ? tr("settings.subtitle.firecrawl") : tr("settings.subtitle.llm");
   }
@@ -1018,6 +1133,16 @@ function onDocumentClickCloseHub(e){
   if(noteStyleMenuOpen){
     if(!($noteStyleDropdown && $noteStyleDropdown.contains(e.target))){
       closeNoteStyleMenu();
+    }
+  }
+  if(uiLangMenuOpen){
+    if(!($uiLangDropdown && $uiLangDropdown.contains(e.target))){
+      closeUiLangMenu();
+    }
+  }
+  if(noteLangMenuOpen){
+    if(!($noteLangDropdown && $noteLangDropdown.contains(e.target))){
+      closeNoteLangMenu();
     }
   }
   if(!$hubMenu || $hubMenu.classList.contains("hidden")) return;

@@ -21,6 +21,10 @@
 
 ---
 
+> ⚠️ **Note**: This repository hosts an early development version, not the final release. Features such as cloud sync are not yet included, and the project is under active iteration. The repository will be updated when the official version is ready.
+
+---
+
 ## ✨ Features
 
 <table>
